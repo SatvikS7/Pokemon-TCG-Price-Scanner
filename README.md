@@ -1,1 +1,1 @@
-"# Pokemon-TCG-Price-Scanner" 
+# Pokemon-TCG-Price-Scanner
