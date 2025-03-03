@@ -5,6 +5,7 @@ from tqdm import tqdm
 from urllib.parse import urlparse
 
 df = pd.read_csv('C:/Users/satvi/Desktop/Personal Projects/pokemon-price-checker-v2/model/dataset/pokemon-cards.csv')
+df = df.sample(frac=1).reset_index(drop=True)
 
 output_folder = 'pokemon_images'
 os.makedirs(output_folder, exist_ok=True)
@@ -27,4 +28,4 @@ def download_images(df, image_column, output_folder):
         except Exception as e:
             print(f"\n Failed to download {url}: {e}")
 
-download_images(df.head(5000), 'image_url', output_folder)
+download_images(df, 'image_url', output_folder)

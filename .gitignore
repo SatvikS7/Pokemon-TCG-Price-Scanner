@@ -26,3 +26,6 @@ dist-ssr
 *.png
 *.jpg
 *.jpeg
+
+# Ignore virtual environment
+pokemon-card-env/

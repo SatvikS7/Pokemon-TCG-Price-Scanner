@@ -38,4 +38,4 @@ def download_mtg_images(num_images):
             print(f"Error: {e}")
             time.sleep(1)
 
-download_mtg_images(1250)
+download_mtg_images(3285)
