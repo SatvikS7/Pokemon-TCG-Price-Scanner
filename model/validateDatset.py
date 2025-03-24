@@ -9,3 +9,4 @@ for root, _, files in os.walk(data_dir):
                 f.read().decode('utf-8', errors='strict')
         except Exception as e:
             print(f"Problematic file: {path} - {e}")
+            break
