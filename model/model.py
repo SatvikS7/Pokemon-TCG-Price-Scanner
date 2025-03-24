@@ -9,9 +9,11 @@ from tensorflow.keras.preprocessing import image_dataset_from_directory
 import matplotlib.pyplot as plt
 
 # Paths to the dataset
-data_dir = "../dataset/"
+data_dir = "../dataset/" 
 batch_size = 32
 img_size = (224, 224)
+
+print("Full dataset path:", os.path.abspath(data_dir))
 
 # Load datasets (with 80-20 train-validation split)
 train_ds = image_dataset_from_directory(
@@ -23,7 +25,7 @@ train_ds = image_dataset_from_directory(
     validation_split=0.2,
     subset="training",
     seed=123,
-    crop_to_aspect_ratio=True,
+    crop_to_aspect_ratio=False,
     pad_to_aspect_ratio=True,
     image_size=img_size,
     batch_size=batch_size
@@ -38,7 +40,7 @@ val_ds = image_dataset_from_directory(
     validation_split=0.2,
     subset="validation",
     seed=123,
-    crop_to_aspect_ratio=True,
+    crop_to_aspect_ratio=False,
     pad_to_aspect_ratio=True,
     image_size=img_size,
     batch_size=batch_size

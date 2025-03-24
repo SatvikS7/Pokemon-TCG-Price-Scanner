@@ -4,12 +4,21 @@ import argparse
 def find_non_utf8_filenames(directory):
     for root, _, files in os.walk(directory):
         for file in files:
+            full_path = os.path.join(root, file)  # Get full path
+            
             try:
-                file.encode('utf-8')  # Try encoding the filename as UTF-8
+                full_path.encode('utf-8')  # Try encoding as UTF-8
             except UnicodeEncodeError as e:
-                print(f"🚨 Problematic file: {os.path.join(root, file)}")
-                print(f"❌ Error details: {e}")
-                print(f"🔎 Non-UTF-8 characters: {[hex(ord(c)) for c in file if ord(c) > 127]}\n")
+                # Extract the problematic character
+                problem_char = full_path[e.start:e.end]
+                print(f"⚠️ Non-UTF-8 character found in: {full_path}")
+                print(f"   Problematic character: {repr(problem_char)}\n")
+    print("✅ Scan complete.")
+
+    for root, _, files in os.walk(directory):
+        for file in files:
+            full_path = os.path.join(root, file)
+            print(full_path)  # Print all filenames
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Find files with non-UTF-8 characters in their names.")
