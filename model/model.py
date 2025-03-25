@@ -19,7 +19,7 @@ print("Full dataset path:", os.path.abspath(data_dir))
 train_ds = image_dataset_from_directory(
     data_dir,
     labels='inferred',
-    label_mode = 'categorical',
+    label_mode = 'int',
     class_names=['neg_data', 'pos_data'],
     shuffle=True,
     validation_split=0.2,
@@ -34,7 +34,7 @@ train_ds = image_dataset_from_directory(
 val_ds = image_dataset_from_directory(
     data_dir,
     labels='inferred',
-    label_mode = 'categorical',
+    label_mode = 'int',
     class_names=['neg_data', 'pos_data'],
     shuffle=True,
     validation_split=0.2,
