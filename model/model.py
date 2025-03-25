@@ -89,7 +89,7 @@ model.compile(optimizer='adam',
 history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=20
+    epochs=9
 )
 
 # Save the Model
