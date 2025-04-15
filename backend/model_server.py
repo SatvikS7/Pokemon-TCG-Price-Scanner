@@ -5,7 +5,7 @@ from PIL import Image
 import io
 
 app = Flask(__name__)
-model = tf.keras.models.load_model("../model/saved_model/")
+model = tf.keras.models.load_model("../model/pokemon_card_detector.h5")
 
 def preprocess(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
