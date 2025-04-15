@@ -88,12 +88,13 @@ model.compile(optimizer='adam',
 # Train the Model
 history = model.fit(
     train_ds,
-    validation_data=val_ds,
-    epochs=9
+    validation_data=val_ds, 
+    epochs=1
 )
 
 # Save the Model
-model.save('pokemon_card_detector.h5')
+#model.save('pokemon_card_detector.h5')
+model.export("saved_model/")
 
 # Evaluate the Model
 test_loss, test_acc = model.evaluate(val_ds)

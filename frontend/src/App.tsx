@@ -33,37 +33,55 @@ function App() {
     setIsCameraActive(false);
   };
 
-  // Load the model and detect Pokémon cards
-  const detectCard = async () => {
-    if (!videoRef.current) return;
+  // Capture current video frame and send to backend
+  const captureAndSendFrame = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
 
-    const model = await mobilenet.load();
-    console.log("Model loaded!");
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
 
-    const interval = setInterval(async () => {
-      if (videoRef.current) {
-        const predictions = await model.classify(videoRef.current);
-        console.log(predictions);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-        if (predictions.length > 0) {
-          setPrediction(predictions[0].className);
-        }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+
+      const formData = new FormData();
+      formData.append("file", blob, "frame.jpg");
+
+      try {
+        const res = await fetch("http://localhost:3001/predict", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        setPrediction(data.prediction);
+      } catch (err) {
+        console.error("Prediction request failed:", err);
       }
-    }, 1000); // Detect every second
-
-    return () => clearInterval(interval);
+    }, "image/jpeg");
   };
+
+  // Start prediction interval when camera is active
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isCameraActive) {
+      interval = setInterval(() => {
+        captureAndSendFrame();
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isCameraActive]);
 
   useEffect(() => {
     startCamera();
     return () => stopCamera();
   }, []);
-
-  useEffect(() => {
-    if (isCameraActive) {
-      detectCard();
-    }
-  }, [isCameraActive]);
 
   return (
     <div className="p-4">
