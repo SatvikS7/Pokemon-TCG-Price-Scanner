@@ -7,6 +7,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<string>("");
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
 
   // Start the camera
   const startCamera = async () => {
@@ -47,6 +48,11 @@ function App() {
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert the canvas to a base64 image string
+    const imageData = canvas.toDataURL("image/jpeg");
+    setCapturedImage(imageData);  // Set captured image for display
+
     canvas.toBlob(async (blob) => {
       if (!blob) return;
 
@@ -115,6 +121,14 @@ function App() {
           className="rounded-xl shadow-lg"
         />
       </div>
+
+      {/* Display Captured Image */}
+      {capturedImage && (
+        <div className="mt-4">
+          <h2 className="text-xl">Captured Image:</h2>
+          <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
+        </div>
+      )}
 
       {/* Prediction Output */}
       {prediction && (
