@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.preprocessing import image_dataset_from_directory
+from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
 
 # Paths to the dataset
@@ -50,9 +51,10 @@ val_ds = image_dataset_from_directory(
 data_augmentation = keras.Sequential([
     layers.RandomFlip("horizontal"),      # Randomly flip images horizontally
     layers.RandomRotation(0.2),           # Rotate images up to 20%
-    layers.RandomZoom(0.2),               # Randomly zoom by 20%
     layers.RandomContrast(0.2),           # Randomly change contrast
-    layers.RandomTranslation(0.1, 0.1)    # Randomly translate (shift) images
+    layers.RandomZoom(0.5),      # Allow zooming out (smaller card)
+    layers.RandomTranslation(0.3, 0.3),  # Simulate card off-center
+    layers.RandomCrop(224, 224), # Train the model on cropped views
 ])
 # Visualize Augmented Data
 for images, _ in train_ds.take(1):
@@ -85,16 +87,21 @@ model.compile(optimizer='adam',
               loss='binary_crossentropy',
               metrics=['accuracy'])
 
+early_stopping = EarlyStopping(
+    monitor='val_loss',     
+    patience=3,             
+    restore_best_weights=True  
+)
 # Train the Model
 history = model.fit(
     train_ds,
     validation_data=val_ds, 
-    epochs=1
+    epochs=20,
+    callbacks=[early_stopping]
 )
 
 # Save the Model
-#model.save('pokemon_card_detector.h5')
-model.export("saved_model/")
+model.save('pokemon_card_detector_v2.h5')
 
 # Evaluate the Model
 test_loss, test_acc = model.evaluate(val_ds)

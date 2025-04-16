@@ -5,12 +5,12 @@ from PIL import Image
 import io
 
 app = Flask(__name__)
-model = tf.keras.models.load_model("../model/pokemon_card_detector.h5")
+model = tf.keras.models.load_model("../model/pokemon_card_detector_v2.h5")
 
 def preprocess(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     img = img.resize((224, 224))  # adjust as needed
-    img = np.array(img) / 255.0
+    img = np.array(img)
     return np.expand_dims(img, axis=0)
 
 @app.route("/predict", methods=["POST"])
