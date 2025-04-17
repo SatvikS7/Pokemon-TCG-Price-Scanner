@@ -4,12 +4,14 @@ import numpy as np
 from PIL import Image
 import io
 import cv2
+import base64
 
 app = Flask(__name__)
 model = tf.keras.models.load_model("../model/pokemon_card_detector.h5")
 
 def crop_card_from_image(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    img_cpy = image.copy()
+    gray = cv2.cvtColor(img_cpy, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blur, 50, 150)
 
@@ -26,10 +28,12 @@ def crop_card_from_image(image):
             print("Empty bounding box — using original image")
             return image
         cropped = image[y:y + h, x:x + w]
-        return cropped
+        image_with_rect = image.copy()
+        cv2.rectangle(image_with_rect, (x, y), (x + w, y + h), (0, 0, 255), 3)
+        return cropped, image_with_rect
     except Exception as e:
         print("Error during cropping:", e)
-        return image  # fallback
+        return image, image  # fallback
 
 
 def preprocess(image):
@@ -48,8 +52,8 @@ def predict():
         return jsonify({"error": "No file uploaded"}), 400
     
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
-    img_np = np.array(img)
-    cropped_image = crop_card_from_image(img_np)
+    img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    cropped_image, annotated_image = crop_card_from_image(img_np)
     img_tensor = preprocess(cropped_image)
     if img_tensor is None:
         return jsonify({
@@ -58,12 +62,16 @@ def predict():
         })
     prediction =    model.predict(img_tensor)
     confidence = round(float(prediction[0][0]), 2)
-    print("Confidence: " + str(confidence))
     label = "Pokemon Card" if confidence >= 0.5 else "Not a Pokemon Card"
+
+    # Encode image with rectangle to base64
+    _, buffer = cv2.imencode('.jpg', annotated_image)
+    img_base64 = base64.b64encode(buffer).decode('utf-8')
 
     return jsonify({
         "confidence": confidence,
         "label": label,
+        "annotated_image": img_base64,
         })
 
 if __name__ == "__main__":

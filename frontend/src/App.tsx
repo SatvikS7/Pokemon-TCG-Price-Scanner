@@ -6,7 +6,7 @@ function App() {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<string>("");
   // Uncomment for debugging
-  //const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
   const [label, setLabel] = useState<string | null>(null);
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
 
@@ -71,6 +71,13 @@ function App() {
 
         const data = await res.json();
         const confidence = parseFloat(data.confidence);
+          // Display returned annotated image
+        if (data.annotated_image) {
+          setCapturedImage(`data:image/jpeg;base64,${data.annotated_image}`);
+        } else {
+          setCapturedImage(imageData); 
+        }
+
         setConfidenceBuffer((prev) => {
           const updated = [...prev, confidence];
           if (updated.length > 10) updated.shift(); // keep last 10 only
@@ -134,6 +141,14 @@ function App() {
           className="rounded-xl shadow-lg"
         />
       </div>
+
+      {/* Display Captured Image */}
+      {capturedImage && (
+        <div className="mt-4">
+          <h2 className="text-xl">Captured Image:</h2>
+          <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
+        </div>
+      )}
 
       {/* Prediction Output */}
       {prediction && (
