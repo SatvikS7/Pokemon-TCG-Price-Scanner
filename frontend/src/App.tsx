@@ -8,6 +8,7 @@ function App() {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<string>("");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
+  const [label, setLabel] = useState<string | null>(null);
 
   // Start the camera
   const startCamera = async () => {
@@ -66,7 +67,8 @@ function App() {
         });
 
         const data = await res.json();
-        setPrediction(data.prediction);
+        setPrediction(data.confidence);
+        setLabel(data.label);
       } catch (err) {
         console.error("Prediction request failed:", err);
       }
@@ -79,7 +81,7 @@ function App() {
     if (isCameraActive) {
       interval = setInterval(() => {
         captureAndSendFrame();
-      }, 2000);
+      }, 100);
     }
     return () => clearInterval(interval);
   }, [isCameraActive]);
@@ -134,6 +136,13 @@ function App() {
       {prediction && (
         <div className="mt-4">
           <h2 className="text-xl">Detected: {prediction}</h2>
+        </div>
+      )}
+
+      {/* Label Output */}
+      {label && (
+        <div className="text-lg font-semibold mt-4 text-white">
+          Predicted Label: <span className="text-yellow-300">{label}</span>
         </div>
       )}
 
