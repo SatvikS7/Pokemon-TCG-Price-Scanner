@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import * as mobilenet from "@tensorflow-models/mobilenet";
-import "@tensorflow/tfjs";
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<string>("");
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
+  // Uncomment for debugging
+  //const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
   const [label, setLabel] = useState<string | null>(null);
+  const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
+
 
   // Start the camera
   const startCamera = async () => {
@@ -32,6 +33,7 @@ function App() {
       stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
+    setConfidenceBuffer([]);
     setIsCameraActive(false);
   };
 
@@ -52,7 +54,8 @@ function App() {
 
     // Convert the canvas to a base64 image string
     const imageData = canvas.toDataURL("image/jpeg");
-    setCapturedImage(imageData);  // Set captured image for display
+    //Uncomment for debugging
+    //setCapturedImage(imageData);  // Set captured image for display
 
     canvas.toBlob(async (blob) => {
       if (!blob) return;
@@ -67,9 +70,17 @@ function App() {
         });
 
         const data = await res.json();
-        setPrediction(data.confidence);
-        setLabel(data.label);
-      } catch (err) {
+        const confidence = parseFloat(data.confidence);
+        setConfidenceBuffer((prev) => {
+          const updated = [...prev, confidence];
+          if (updated.length > 10) updated.shift(); // keep last 10 only
+  
+          const avg = updated.reduce((sum, val) => sum + val, 0) / updated.length;
+          setPrediction(avg.toFixed(2));
+          setLabel(avg >= 0.5 ? "Pokemon Card" : "Not a Pokemon Card");
+  
+          return updated;
+        });      } catch (err) {
         console.error("Prediction request failed:", err);
       }
     }, "image/jpeg");
@@ -81,7 +92,7 @@ function App() {
     if (isCameraActive) {
       interval = setInterval(() => {
         captureAndSendFrame();
-      }, 100);
+      }, 70);
     }
     return () => clearInterval(interval);
   }, [isCameraActive]);
@@ -124,14 +135,6 @@ function App() {
         />
       </div>
 
-      {/* Display Captured Image */}
-      {capturedImage && (
-        <div className="mt-4">
-          <h2 className="text-xl">Captured Image:</h2>
-          <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
-        </div>
-      )}
-
       {/* Prediction Output */}
       {prediction && (
         <div className="mt-4">
@@ -146,9 +149,36 @@ function App() {
         </div>
       )}
 
+      {/* Rolling Confidence Buffer */}
+      {confidenceBuffer.length > 0 && (
+        <div className="mt-4">
+          <h2 className="text-xl mb-2">Confidence Buffer:</h2>
+          <div className="flex flex-wrap gap-2">
+            {confidenceBuffer.map((conf, index) => (
+              <div
+                key={index}
+                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg shadow"
+              >
+                {conf.toFixed(2)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
   );
 }
 
 export default App;
+
+  // Use to display captured image
+  //
+  //{/* Display Captured Image */}
+  //{capturedImage && (
+  //  <div className="mt-4">
+  //    <h2 className="text-xl">Captured Image:</h2>
+  //    <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
+  //  </div>
+  //)}
