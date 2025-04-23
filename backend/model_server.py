@@ -13,68 +13,35 @@ def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blur, 50, 150)
-
-    # Find contours
-    #contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #if not contours:
-    #    print("No contours found — using original image")
-    #    return image  # fallback to original
-    #try:
-    #    card_contour = max(contours, key=cv2.contourArea)
-    #   x, y, w, h = cv2.boundingRect(card_contour)
-    #    if w == 0 or h == 0:
-    #       print("Empty bounding box — using original image")
-    #       return image
-    #   cropped = image[y:y + h, x:x + w]
-    #   image_with_rect = image.copy()
-    #   cv2.rectangle(image_with_rect, (x, y), (x + w, y + h), (0, 0, 255), 3)
-    #  return cropped, image_with_rect
-    #except Exception as e:
-    #    print("Error during cropping:", e)
-    #    return image, image  # fallback
+    edges = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations=1)
 
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("No contours found — using original image")
         return image, image
 
-    min_area = 0.1 * image.shape[0] * image.shape[1] 
-
+    min_area = 0.03 * image.shape[0] * image.shape[1]
     card_like_contours = []
+
     for cnt in contours:
         area = cv2.contourArea(cnt)
         if area < min_area:
             continue
-        x, y, w, h = cv2.boundingRect(cnt)
+
+        approx = cv2.approxPolyDP(cnt, 0.02 * cv2.arcLength(cnt, True), True)
         aspect_ratio = h / w if w != 0 else 0
-        if 1.2 < aspect_ratio < 1.6:
+        if len(approx) == 4 and 1.0 < aspect_ratio < 1.8:
             card_like_contours.append(cnt)
 
     if not card_like_contours:
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not contours:
-            print("No contours found — using original image")
-            return image, image  # fallback to original
-        try:
-            card_contour = max(contours, key=cv2.contourArea)
-            x, y, w, h = cv2.boundingRect(card_contour)
-            if w == 0 or h == 0:
-                print("Empty bounding box — using original image")
-                return image, image
-            cropped = image[y:y + h, x:x + w]
-            image_with_rect = image.copy()
-            cv2.rectangle(image_with_rect, (x, y), (x + w, y + h), (0, 0, 255), 3)
-            return cropped, image_with_rect
-        except Exception as e:
-            print("Error during cropping:", e)
-            return image, image  # fallback
+        print("No card-like contours found — using original image")
+        return image, image
 
-    # Pick the largest suitable contour
     card_contour = max(card_like_contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(card_contour)
 
     image_cpy = image.copy()
-    cv2.drawContours(image_cpy, card_like_contours, -1, (0, 255, 0), 2)
+    cv2.drawContours(image_cpy, [card_contour], -1, (0, 255, 0), 2)
 
     return image[y:y+h, x:x+w], image_cpy
 

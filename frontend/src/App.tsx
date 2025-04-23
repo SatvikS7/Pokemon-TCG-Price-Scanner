@@ -84,7 +84,7 @@ function App() {
   
           const avg = updated.reduce((sum, val) => sum + val, 0) / updated.length;
           setPrediction(avg.toFixed(2));
-          setLabel(avg >= 0.5 ? "Pokemon Card" : "Not a Pokemon Card");
+          setLabel(avg >= 0.69 ? "Pokemon Card" : "Not a Pokemon Card");
   
           return updated;
         });      } catch (err) {
