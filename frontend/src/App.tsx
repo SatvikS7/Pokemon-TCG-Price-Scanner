@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import SetSelector from "./setSelector";
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -9,6 +10,9 @@ function App() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
   const [label, setLabel] = useState<string | null>(null);
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
+  const [cardDetected, setCardDetected] = useState<boolean>(false);
+  const [imageBuffer, setImageBuffer] = useState<Blob[]>([]);
+
 
 
   // Start the camera
@@ -60,6 +64,12 @@ function App() {
     canvas.toBlob(async (blob) => {
       if (!blob) return;
 
+      setImageBuffer(prev => {
+        const updated = [...prev, blob];
+        if (updated.length > 10) updated.shift(); // keep last 10
+        return updated;
+      });
+
       const formData = new FormData();
       formData.append("file", blob, "frame.jpg");
 
@@ -85,6 +95,8 @@ function App() {
           const avg = updated.reduce((sum, val) => sum + val, 0) / updated.length;
           setPrediction(avg.toFixed(2));
           setLabel(avg >= 0.69 ? "Pokemon Card" : "Not a Pokemon Card");
+
+          if(avg >= 0.69) { setCardDetected(true); } else { setCardDetected(false); }
   
           return updated;
         });      } catch (err) {
@@ -93,21 +105,42 @@ function App() {
     }, "image/jpeg");
   };
 
-  // Start prediction interval when camera is active
+  // Start prediction interval when camera is active and card is not detected
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    if (isCameraActive) {
+    if (isCameraActive && !cardDetected) {
       interval = setInterval(() => {
         captureAndSendFrame();
       }, 70);
     }
     return () => clearInterval(interval);
-  }, [isCameraActive]);
+  }, [isCameraActive, cardDetected]);
 
   useEffect(() => {
     startCamera();
     return () => stopCamera();
   }, []);
+
+  useEffect(() => {
+    if (cardDetected && imageBuffer.length === 10) {
+      const formData = new FormData();
+      imageBuffer.forEach((imgBlob, index) => {
+        formData.append("images", imgBlob, `frame_${index}.jpg`);
+      });
+  
+      fetch("http://localhost:3001/ocr", {
+        method: "POST",
+        body: formData,
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("OCR Results:", data);
+        // You can now use the OCR results for narrowing card candidates
+      })
+      .catch(err => console.error("OCR request failed", err));
+    }
+  }, [cardDetected, imageBuffer]);
+  
 
   return (
     <div className="p-4">
@@ -180,6 +213,11 @@ function App() {
           </div>
         </div>
       )}
+
+      <SetSelector onSelect={(set) => {
+        console.log("Selected set:", set);
+        // Pass set.id or set.name to your card search logic
+      }} />
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
