@@ -33,4 +33,5 @@ python_3.11.4_env/
 *.exe
 *.h5
 *.env
+*.txt
 
