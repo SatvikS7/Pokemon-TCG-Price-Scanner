@@ -4,6 +4,8 @@ import multer from 'multer';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import fs from 'fs';
+const { performOCRFromBuffer } = require("./ocr/ocr");
+
 
 const app = express();
 const port = 3001;
@@ -33,6 +35,25 @@ app.post('/predict', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch prediction' });
   } finally {
     fs.unlinkSync(req.file.path); // delete temp file
+  }
+});
+
+app.post("/ocr", upload.array("images", 10), async (req, res) => {
+  try {
+    const results = [];
+
+    for (const file of req.files) {
+      const buffer = fs.readFileSync(file.path);
+      const text = await performOCRFromBuffer(buffer);
+      results.push({ filename: file.originalname, text });
+
+      fs.unlinkSync(file.path); // cleanup
+    }
+
+    res.json({ ocr_results: results });
+  } catch (err) {
+    console.error("OCR route failed:", err);
+    res.status(500).json({ error: "Failed to process OCR" });
   }
 });
 

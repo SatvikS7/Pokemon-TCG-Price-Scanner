@@ -80,7 +80,6 @@ def predict():
 
     return jsonify({
         "confidence": confidence,
-        "label": label,
         "annotated_image": img_base64,
         })
 
