@@ -1,4 +1,4 @@
-const Tesseract = require("tesseract.js");
+import Tesseract from "tesseract.js";
 
 async function performOCRFromBuffer(buffer) {
   try {
@@ -13,6 +13,4 @@ async function performOCRFromBuffer(buffer) {
   }
 }
 
-module.exports = {
-  performOCRFromBuffer,
-};
+export { performOCRFromBuffer };

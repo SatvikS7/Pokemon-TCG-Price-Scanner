@@ -111,7 +111,7 @@ function App() {
     if (isCameraActive && !cardDetected) {
       interval = setInterval(() => {
         captureAndSendFrame();
-      }, 70);
+      }, 700);
     }
     return () => clearInterval(interval);
   }, [isCameraActive, cardDetected]);
@@ -123,6 +123,7 @@ function App() {
 
   useEffect(() => {
     if (cardDetected && imageBuffer.length === 10) {
+      console.log("10 images found");
       const formData = new FormData();
       imageBuffer.forEach((imgBlob, index) => {
         formData.append("images", imgBlob, `frame_${index}.jpg`);
@@ -182,6 +183,25 @@ function App() {
           <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
         </div>
       )}
+
+      {/* Display all images in the imageBuffer */}
+      {imageBuffer.length > 0 && (
+        <div className="mt-4">
+          <h2 className="text-xl mb-2">Buffered Images:</h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {imageBuffer.map((blob, index) => {
+              const url = URL.createObjectURL(blob);
+              return (
+                <div key={index} className="border p-2 rounded-lg shadow">
+                  <img src={url} alt={`Buffered ${index}`} className="rounded" />
+                  <p className="text-center text-xs mt-1">Image {index + 1}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       {/* Prediction Output */}
       {prediction && (

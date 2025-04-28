@@ -4,8 +4,7 @@ import multer from 'multer';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import fs from 'fs';
-const { performOCRFromBuffer } = require("./ocr/ocr");
-
+import { performOCRFromBuffer } from "./ocr/ocr.js";
 
 const app = express();
 const port = 3001;
@@ -41,7 +40,7 @@ app.post('/predict', upload.single('file'), async (req, res) => {
 app.post("/ocr", upload.array("images", 10), async (req, res) => {
   try {
     const results = [];
-
+    console.log("PROCESSING!!!");
     for (const file of req.files) {
       const buffer = fs.readFileSync(file.path);
       const text = await performOCRFromBuffer(buffer);

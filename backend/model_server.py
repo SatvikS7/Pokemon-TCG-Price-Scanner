@@ -29,12 +29,11 @@ def crop_card_from_image(image):
             continue
 
         approx = cv2.approxPolyDP(cnt, 0.02 * cv2.arcLength(cnt, True), True)
-        aspect_ratio = h / w if w != 0 else 0
-        if len(approx) == 4 and 1.0 < aspect_ratio < 1.8:
+        if len(approx) == 4:  # looks like a rectangle
             card_like_contours.append(cnt)
 
     if not card_like_contours:
-        print("No card-like contours found — using original image")
+        print("No rectangular card-like contours found — using original image")
         return image, image
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
@@ -44,7 +43,6 @@ def crop_card_from_image(image):
     cv2.drawContours(image_cpy, [card_contour], -1, (0, 255, 0), 2)
 
     return image[y:y+h, x:x+w], image_cpy
-
 
 def preprocess(image):
     try:
