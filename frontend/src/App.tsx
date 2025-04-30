@@ -12,6 +12,13 @@ function App() {
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
   const [cardDetected, setCardDetected] = useState<boolean>(false);
   const [imageBuffer, setImageBuffer] = useState<Blob[]>([]);
+  const [processingStages, setProcessingStages] = useState<{
+    gray?: string;
+    blur?: string;
+    edges?: string;
+    dilated?: string;
+    cropped?: string;
+  }>({});
 
 
 
@@ -39,6 +46,7 @@ function App() {
     }
     setConfidenceBuffer([]);
     setIsCameraActive(false);
+    setCardDetected(false);
   };
 
   // Capture current video frame and send to backend
@@ -88,6 +96,14 @@ function App() {
           setCapturedImage(imageData); 
         }
 
+        setProcessingStages({
+          gray: data.gray && `data:image/jpeg;base64,${data.gray}`,
+          blur: data.blur && `data:image/jpeg;base64,${data.blur}`,
+          edges: data.edges && `data:image/jpeg;base64,${data.edges}`,
+          dilated: data.dilated && `data:image/jpeg;base64,${data.dilated}`,
+          cropped: data.cropped_image && `data:image/jpeg;base64,${data.cropped_image}`,
+        });
+
         setConfidenceBuffer((prev) => {
           const updated = [...prev, confidence];
           if (updated.length > 10) updated.shift(); // keep last 10 only
@@ -111,7 +127,7 @@ function App() {
     if (isCameraActive && !cardDetected) {
       interval = setInterval(() => {
         captureAndSendFrame();
-      }, 700);
+      }, 70);
     }
     return () => clearInterval(interval);
   }, [isCameraActive, cardDetected]);
@@ -144,100 +160,144 @@ function App() {
   
 
   return (
-    <div className="p-4">
+    <div className="flex flex-col lg:flex-row gap-8">
       <h1 className="text-2xl font-bold mb-4">Pokémon Card Detector</h1>
+      <div className="flex-1">
+        {/* Camera Controls */}
+        <div>
+          {isCameraActive ? (
+            <button
+              onClick={stopCamera}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg mr-4"
+            >
+              Stop Camera
+            </button>
+          ) : (
+            <button
+              onClick={startCamera}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg mr-4"
+            >
+              Start Camera
+            </button>
+          )}
+        </div>
 
-      {/* Camera Controls */}
-      <div>
-        {isCameraActive ? (
-          <button
-            onClick={stopCamera}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg mr-4"
-          >
-            Stop Camera
-          </button>
-        ) : (
-          <button
-            onClick={startCamera}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg mr-4"
-          >
-            Start Camera
-          </button>
+        {/* Live Camera Feed */}
+        <div className="mt-4">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="rounded-xl shadow-lg"
+          />
+        </div>
+
+        {/* Display Captured Image */}
+        {capturedImage && (
+          <div className="mt-4">
+            <h2 className="text-xl">Captured Image:</h2>
+            <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
+          </div>
         )}
-      </div>
+        
+        {/*
+        {/* Display all images in the imageBuffer }
+        {imageBuffer.length > 0 && (
+          <div className="mt-4">
+            <h2 className="text-xl mb-2">Buffered Images:</h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {imageBuffer.map((blob, index) => {
+                const url = URL.createObjectURL(blob);
+                return (
+                  <div key={index} className="border p-2 rounded-lg shadow">
+                    <img src={url} alt={`Buffered ${index}`} className="rounded" />
+                    <p className="text-center text-xs mt-1">Image {index + 1}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}*/}
 
-      {/* Live Camera Feed */}
-      <div className="mt-4">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          className="rounded-xl shadow-lg"
-        />
-      </div>
 
-      {/* Display Captured Image */}
-      {capturedImage && (
-        <div className="mt-4">
-          <h2 className="text-xl">Captured Image:</h2>
-          <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
-        </div>
-      )}
+        {/* Prediction Output */}
+        {prediction && (
+          <div className="mt-4">
+            <h2 className="text-xl">Detected: {prediction}</h2>
+          </div>
+        )}
 
-      {/* Display all images in the imageBuffer */}
-      {imageBuffer.length > 0 && (
-        <div className="mt-4">
-          <h2 className="text-xl mb-2">Buffered Images:</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {imageBuffer.map((blob, index) => {
-              const url = URL.createObjectURL(blob);
-              return (
-                <div key={index} className="border p-2 rounded-lg shadow">
-                  <img src={url} alt={`Buffered ${index}`} className="rounded" />
-                  <p className="text-center text-xs mt-1">Image {index + 1}</p>
+        {/* Label Output */}
+        {label && (
+          <div className="text-lg font-semibold mt-4 text-white">
+            Predicted Label: <span className="text-yellow-300">{label}</span>
+          </div>
+        )}
+
+        {/* Rolling Confidence Buffer */}
+        {confidenceBuffer.length > 0 && (
+          <div className="mt-4">
+            <h2 className="text-xl mb-2">Confidence Buffer:</h2>
+            <div className="flex flex-wrap gap-2">
+              {confidenceBuffer.map((conf, index) => (
+                <div
+                  key={index}
+                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg shadow"
+                >
+                  {conf.toFixed(2)}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        <SetSelector onSelect={(set) => {
+          console.log("Selected set:", set);
+          // Pass set.id or set.name to your card search logic
+        }} />
+      </div>
 
 
-      {/* Prediction Output */}
-      {prediction && (
-        <div className="mt-4">
-          <h2 className="text-xl">Detected: {prediction}</h2>
-        </div>
-      )}
-
-      {/* Label Output */}
-      {label && (
-        <div className="text-lg font-semibold mt-4 text-white">
-          Predicted Label: <span className="text-yellow-300">{label}</span>
-        </div>
-      )}
-
-      {/* Rolling Confidence Buffer */}
-      {confidenceBuffer.length > 0 && (
-        <div className="mt-4">
-          <h2 className="text-xl mb-2">Confidence Buffer:</h2>
-          <div className="flex flex-wrap gap-2">
-            {confidenceBuffer.map((conf, index) => (
-              <div
-                key={index}
-                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg shadow"
-              >
-                {conf.toFixed(2)}
+    <div className="w-full lg:w-[500px]">
+      {/* Image Processing Stages */}
+      {Object.values(processingStages).some(Boolean) && (
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold mb-4">Image Processing Stages</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {processingStages.gray && (
+              <div>
+                <p className="text-sm text-center">Grayscale</p>
+                <img src={processingStages.gray} className="rounded-lg border" />
               </div>
-            ))}
+            )}
+            {processingStages.blur && (
+              <div>
+                <p className="text-sm text-center">Blurred</p>
+                <img src={processingStages.blur} className="rounded-lg border" />
+              </div>
+            )}
+            {processingStages.edges && (
+              <div>
+                <p className="text-sm text-center">Edges</p>
+                <img src={processingStages.edges} className="rounded-lg border" />
+              </div>
+            )}
+            {processingStages.dilated && (
+              <div>
+                <p className="text-sm text-center">Dilated</p>
+                <img src={processingStages.dilated} className="rounded-lg border" />
+              </div>
+            )}
+            {processingStages.cropped && (
+              <div>
+                <p className="text-sm text-center">Cropped</p>
+                <img src={processingStages.cropped} className="rounded-lg border" />
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      <SetSelector onSelect={(set) => {
-        console.log("Selected set:", set);
-        // Pass set.id or set.name to your card search logic
-      }} />
+    </div>
 
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>

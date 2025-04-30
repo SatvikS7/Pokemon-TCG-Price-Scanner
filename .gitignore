@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
+# Ignore dataset images
 *.png
 *.jpg
 *.jpeg
@@ -30,8 +31,11 @@ dist-ssr
 # Ignore virtual environment
 pokemon-card-env/
 python_3.11.4_env/
+
+# Extra
 *.exe
 *.h5
 *.env
 *.txt
+*.traineddata
 

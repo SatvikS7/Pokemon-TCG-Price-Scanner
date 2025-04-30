@@ -13,12 +13,12 @@ def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blur, 50, 150)
-    edges = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations=1)
+    edges_dialate = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations=1)
 
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(edges_dialate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("No contours found — using original image")
-        return image, image
+        return image, image, gray, blur, edges, edges_dialate
 
     min_area = 0.03 * image.shape[0] * image.shape[1]
     card_like_contours = []
@@ -34,7 +34,7 @@ def crop_card_from_image(image):
 
     if not card_like_contours:
         print("No rectangular card-like contours found — using original image")
-        return image, image
+        return image, image, gray, blur, edges, edges_dialate
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(card_contour)
@@ -42,7 +42,7 @@ def crop_card_from_image(image):
     image_cpy = image.copy()
     cv2.drawContours(image_cpy, [card_contour], -1, (0, 255, 0), 2)
 
-    return image[y:y+h, x:x+w], image_cpy
+    return image[y:y+h, x:x+w], image_cpy, gray, blur, edges, edges_dialate
 
 def preprocess(image):
     try:
@@ -52,6 +52,12 @@ def preprocess(image):
     except Exception as e:
         print("Error during preprocessing:", e)
         return None
+    
+def encode_img(img, is_gray=False):
+    if is_gray:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    _, buffer = cv2.imencode('.jpg', img)
+    return base64.b64encode(buffer).decode('utf-8')
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -61,24 +67,25 @@ def predict():
     
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
     img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    cropped_image, annotated_image = crop_card_from_image(img_np)
+    cropped_image, annotated_image, gray, blur, edges, edges_dialate = crop_card_from_image(img_np)
     img_tensor = preprocess(cropped_image)
     if img_tensor is None:
         return jsonify({
         "confidence": 0.0,
         "label": "Error during preprocessing",
         })
-    prediction =    model.predict(img_tensor)
+    prediction = model.predict(img_tensor)
     confidence = round(float(prediction[0][0]), 2)
     label = "Pokemon Card" if confidence >= 0.5 else "Not a Pokemon Card"
 
-    # Encode image with rectangle to base64
-    _, buffer = cv2.imencode('.jpg', annotated_image)
-    img_base64 = base64.b64encode(buffer).decode('utf-8')
-
     return jsonify({
         "confidence": confidence,
-        "annotated_image": img_base64,
+        "annotated_image": encode_img(annotated_image),
+        "cropped_image": encode_img(cropped_image),
+        "gray": encode_img(gray, is_gray=True),
+        "blur": encode_img(blur, is_gray=True),
+        "edges": encode_img(edges, is_gray=True),
+        "dilated": encode_img(edges_dialate, is_gray=True)
         })
 
 if __name__ == "__main__":

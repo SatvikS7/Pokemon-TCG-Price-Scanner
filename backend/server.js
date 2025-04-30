@@ -40,7 +40,6 @@ app.post('/predict', upload.single('file'), async (req, res) => {
 app.post("/ocr", upload.array("images", 10), async (req, res) => {
   try {
     const results = [];
-    console.log("PROCESSING!!!");
     for (const file of req.files) {
       const buffer = fs.readFileSync(file.path);
       const text = await performOCRFromBuffer(buffer);
