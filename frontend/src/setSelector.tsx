@@ -30,19 +30,19 @@ const SetSelector: React.FC<{ onSelect: (set: PokemonSet) => void }> = ({ onSele
   };
 
   return (
-    <div className="my-4">
-      <label htmlFor="set-select" className="block font-semibold text-gray-700 mb-2">
+    <div className="set-selector">
+      <label htmlFor="set-select" className="set-label">
         Choose a set:
       </label>
       <select
         id="set-select"
         value={selectedSetId}
         onChange={handleChange}
-        className="border border-gray-300 rounded p-2 w-full"
+        className="set-dropdown"
       >
         <option value="">-- Select a Set --</option>
         {sets.map((set) => (
-          <option key={set.id} value={set.id}>
+          <option key={set.id} value={set.id} className="set-option">
             {set.name}
           </option>
         ))}

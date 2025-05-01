@@ -163,145 +163,108 @@ function App() {
   
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      <h1 className="text-2xl font-bold mb-4">Pokémon Card Detector</h1>
-      <div className="flex-1">
-        {/* Camera Controls */}
-        <div>
-          {isCameraActive ? (
-            <button
-              onClick={stopCamera}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg mr-4"
-            >
-              Stop Camera
-            </button>
-          ) : (
-            <button
-              onClick={startCamera}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg mr-4"
-            >
-              Start Camera
-            </button>
-          )}
-        </div>
-
+    <div className="body">
+      <div className="header">
+        <h1 className="text-2xl font-bold mb-4">Pokémon Card Detector</h1>
+      </div>
+      <main className="main-container">
         {/* Live Camera Feed */}
-        <div className="mt-4">
+        <div className="video-section">
           <video
             ref={videoRef}
             autoPlay
             playsInline
-            className="rounded-xl shadow-lg"
+            className="video-feed"
           />
-        </div>
+          <div className="setting-container">
+            <SetSelector onSelect={(set) => {
+              console.log("Selected set:", set);
+              // Pass set.id or set.name to your card search logic
+            }} />
 
-        {/* Display Captured Image */}
-        {capturedImage && (
-          <div className="mt-4">
-            <h2 className="text-xl">Captured Image:</h2>
-            <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
-          </div>
-        )}
-        
-        {/*
-        {/* Display all images in the imageBuffer }
-        {imageBuffer.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-xl mb-2">Buffered Images:</h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {imageBuffer.map((blob, index) => {
-                const url = URL.createObjectURL(blob);
-                return (
-                  <div key={index} className="border p-2 rounded-lg shadow">
-                    <img src={url} alt={`Buffered ${index}`} className="rounded" />
-                    <p className="text-center text-xs mt-1">Image {index + 1}</p>
-                  </div>
-                );
-              })}
+            {/* Camera Controls*/}
+            <div className="button-container">
+              <button
+                onClick={isCameraActive ? stopCamera : startCamera}
+                className={`vid-button ${isCameraActive ? 'pause' : 'play'}`}
+              >
+                {isCameraActive ? 'Stop Camera' : 'Start Camera'}
+              </button>
             </div>
           </div>
-        )}*/}
-
-
-        {/* Prediction Output */}
-        {prediction && (
-          <div className="mt-4">
-            <h2 className="text-xl">Detected: {prediction}</h2>
-          </div>
-        )}
-
-        {/* Label Output */}
-        {label && (
-          <div className="text-lg font-semibold mt-4 text-white">
-            Predicted Label: <span className="text-yellow-300">{label}</span>
-          </div>
-        )}
+        </div>
 
         {/* Rolling Confidence Buffer */}
         {confidenceBuffer.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-xl mb-2">Confidence Buffer:</h2>
-            <div className="flex flex-wrap gap-2">
+          <div className="confidence-section">
+            <div className="confidence-scroller">
               {confidenceBuffer.map((conf, index) => (
-                <div
-                  key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg shadow"
-                >
+                <div key={index} className="confidence-item">
                   {conf.toFixed(2)}
                 </div>
               ))}
             </div>
+
+
+            {/* Prediction Output */}
+            <div className="prediction-info">
+              {prediction && <h2>Detected: {prediction}</h2>}
+
+              {/* Label Output */}
+              {label && (
+                <p>
+                  Predicted Label: <span className="highlight">{label}</span>
+                </p>
+              )}
+
+            </div>
           </div>
         )}
 
-        <SetSelector onSelect={(set) => {
-          console.log("Selected set:", set);
-          // Pass set.id or set.name to your card search logic
-        }} />
-      </div>
+        {/* Display Captured Image */}
+        {capturedImage && (
+          <div className="captured-section">
+            <h2>Captured Image:</h2>
+            <img src={capturedImage} alt="Captured" className="captured-img" />
+          </div>
+        )}
 
-
-    <div className="w-full lg:w-[500px]">
-      {/* Image Processing Stages */}
-      {Object.values(processingStages).some(Boolean) && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-4">Image Processing Stages</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+        {/* Image Processing Stages */}
+        {Object.values(processingStages).some(Boolean) && (
+          <div className="processing-grid">
             {processingStages.gray && (
-              <div>
-                <p className="text-sm text-center">Grayscale</p>
-                <img src={processingStages.gray} className="rounded-lg border" />
+              <div className="grid-item">
+                <p>Grayscale</p>
+                <img src={processingStages.gray} className="Grayscale" />
               </div>
             )}
             {processingStages.blur && (
-              <div>
-                <p className="text-sm text-center">Blurred</p>
-                <img src={processingStages.blur} className="rounded-lg border" />
+              <div className="grid-item">
+                <p>Blurred</p>
+                <img src={processingStages.blur} className="Blurred" />
               </div>
             )}
             {processingStages.edges && (
-              <div>
-                <p className="text-sm text-center">Edges</p>
-                <img src={processingStages.edges} className="rounded-lg border" />
+              <div className="grid-item">
+                <p>Edges</p>
+                <img src={processingStages.edges} className="Edges" />
               </div>
             )}
             {processingStages.dilated && (
-              <div>
-                <p className="text-sm text-center">Dilated</p>
-                <img src={processingStages.dilated} className="rounded-lg border" />
+              <div className="grid-item">
+                <p>Dilated</p>
+                <img src={processingStages.dilated} className="Dilated" />
               </div>
             )}
             {processingStages.cropped && (
-              <div>
-                <p className="text-sm text-center">Cropped</p>
-                <img src={processingStages.cropped} className="rounded-lg border" />
+              <div className="grid-item">
+                <p>Cropped</p>
+                <img src={processingStages.cropped} className="Cropped" />
               </div>
             )}
           </div>
-        </div>
-      )}
-    </div>
-
+        )}
+      </main>
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
   );
