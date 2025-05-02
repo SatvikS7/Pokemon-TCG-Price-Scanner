@@ -34,8 +34,9 @@ python_3.11.4_env/
 
 # Extra
 *.exe
-*.h5
 *.env
+model/pokemon_card_detector_v2.h5
+model/pokemon_card_detector.h5
 notes.txt
 *.traineddata
 
