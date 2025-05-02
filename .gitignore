@@ -37,6 +37,7 @@ python_3.11.4_env/
 *.env
 model/pokemon_card_detector_v2.h5
 model/pokemon_card_detector.h5
+backend/model/pokemon_card_detector.h5
 notes.txt
 *.traineddata
 
