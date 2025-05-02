@@ -40,15 +40,72 @@ app.post('/predict', upload.single('file'), async (req, res) => {
 app.post("/ocr", upload.array("images", 10), async (req, res) => {
   try {
     const results = [];
+    const names = [];
+    const hps = [];
+
     for (const file of req.files) {
       const buffer = fs.readFileSync(file.path);
       const text = await performOCRFromBuffer(buffer);
       results.push({ filename: file.originalname, text });
 
-      fs.unlinkSync(file.path); // cleanup
+      // Clean up the file after processing
+      fs.unlinkSync(file.path);
+
+      // Clean + split text into words
+      const words = text
+        .split(/\s+/)
+        .map((word) => word.trim())
+        .filter((word) => word.length > 0);
+
+      let numbers = [];
+      let longestWord = "";
+
+      for (const word of words) {
+        // Look for numbers inside the word, even if it's like "w70" or "hp70"
+        const numMatch = word.match(/\d+/);
+        if (numMatch) {
+          const num = parseInt(numMatch[0], 10);
+          if (!isNaN(num)) {
+            numbers.push(num);
+          }
+        }
+
+        // Find the longest alphabetic word (pure letters)
+        if (word.length > longestWord.length && /^[A-Za-z]+$/.test(word)) {
+          longestWord = word;
+        }
+      }
+
+      // Get the largest number found (if any)
+      let foundHp = numbers.length > 0 ? Math.max(...numbers) : null;
+
+      if (longestWord) names.push(longestWord);
+      if (foundHp !== null) hps.push(foundHp.toString());
     }
 
-    res.json({ ocr_results: results });
+    // Majority vote logic
+    function majorityVote(arr) {
+      const count = {};
+      for (const item of arr) {
+        count[item] = (count[item] || 0) + 1;
+      }
+      return Object.entries(count).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    }
+
+    const votedName = majorityVote(names);
+    const votedHp = majorityVote(hps);
+
+    res.json({
+      ocr_results: results,
+      majority_vote: {
+        name: votedName,
+        hp: votedHp,
+      },
+      votes: {
+        all_names: names,
+        all_hps: hps,
+      },
+    });
   } catch (err) {
     console.error("OCR route failed:", err);
     res.status(500).json({ error: "Failed to process OCR" });

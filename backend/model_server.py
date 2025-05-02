@@ -18,7 +18,7 @@ def crop_card_from_image(image):
     contours, _ = cv2.findContours(edges_dialate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("No contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate
+        return image, image, gray, blur, edges, edges_dialate, None
 
     min_area = 0.03 * image.shape[0] * image.shape[1]
     card_like_contours = []
@@ -34,7 +34,7 @@ def crop_card_from_image(image):
 
     if not card_like_contours:
         print("No rectangular card-like contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate
+        return image, image, gray, blur, edges, edges_dialate, None
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(card_contour)
@@ -42,7 +42,12 @@ def crop_card_from_image(image):
     image_cpy = image.copy()
     cv2.drawContours(image_cpy, [card_contour], -1, (0, 255, 0), 2)
 
-    return image[y:y+h, x:x+w], image_cpy, gray, blur, edges, edges_dialate
+    cropped = image[y:y+h, x:x+w]
+
+    card_name_height = int(0.10 * cropped.shape[0])
+    card_name = cropped[:card_name_height, :]
+
+    return cropped, image_cpy, gray, blur, edges, edges_dialate, card_name
 
 def preprocess(image):
     try:
@@ -67,7 +72,7 @@ def predict():
     
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
     img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    cropped_image, annotated_image, gray, blur, edges, edges_dialate = crop_card_from_image(img_np)
+    cropped_image, annotated_image, gray, blur, edges, edges_dialate, card_name = crop_card_from_image(img_np)
     img_tensor = preprocess(cropped_image)
     if img_tensor is None:
         return jsonify({
@@ -76,7 +81,6 @@ def predict():
         })
     prediction = model.predict(img_tensor)
     confidence = round(float(prediction[0][0]), 2)
-    label = "Pokemon Card" if confidence >= 0.5 else "Not a Pokemon Card"
 
     return jsonify({
         "confidence": confidence,
@@ -85,7 +89,8 @@ def predict():
         "gray": encode_img(gray, is_gray=True),
         "blur": encode_img(blur, is_gray=True),
         "edges": encode_img(edges, is_gray=True),
-        "dilated": encode_img(edges_dialate, is_gray=True)
+        "dilated": encode_img(edges_dialate, is_gray=True),
+        "card_name": encode_img(card_name) if card_name is not None else None,
         })
 
 if __name__ == "__main__":

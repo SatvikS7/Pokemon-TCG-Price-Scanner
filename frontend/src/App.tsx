@@ -11,13 +11,19 @@ function App() {
   const [label, setLabel] = useState<string | null>(null);
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
   const [cardDetected, setCardDetected] = useState<boolean>(false);
-  const [imageBuffer, setImageBuffer] = useState<Blob[]>([]);
+  const [cardNameBuffer, setCardNameBuffer] = useState<Blob[]>([]);
+  const [selectedSet, setSelectedSet] = useState<string | null>(null);
+  const [majorityVoteName, setMajorityVoteName] = useState<string | null>(null);
+  const [majorityVoteHp, setMajorityVoteHp] = useState<string | null>(null);
+  const [cardResults, setCardResults] = useState<any[]>([]);
+  //const [imageBuffer, setImageBuffer] = useState<Blob[]>([]);
   const [processingStages, setProcessingStages] = useState<{
     gray?: string;
     blur?: string;
     edges?: string;
     dilated?: string;
     cropped?: string;
+    card_name?: string;
   }>({});
 
 
@@ -74,12 +80,12 @@ function App() {
 
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-
+      /*
       setImageBuffer(prev => {
         const updated = [...prev, blob];
         if (updated.length > 10) updated.shift(); // keep last 10
         return updated;
-      });
+      });*/
 
       const formData = new FormData();
       formData.append("file", blob, "frame.jpg");
@@ -105,7 +111,24 @@ function App() {
           edges: data.edges && `data:image/jpeg;base64,${data.edges}`,
           dilated: data.dilated && `data:image/jpeg;base64,${data.dilated}`,
           cropped: data.cropped_image && `data:image/jpeg;base64,${data.cropped_image}`,
+          card_name: data.card_name && `data:image/jpeg;base64,${data.card_name}`
         });
+
+        if (data.card_name) {
+          const byteString = atob(data.card_name);  // decode base64
+          const arrayBuffer = new ArrayBuffer(byteString.length);
+          const uint8Array = new Uint8Array(arrayBuffer);
+          for (let i = 0; i < byteString.length; i++) {
+            uint8Array[i] = byteString.charCodeAt(i);
+          }
+          const cardNameBlob = new Blob([uint8Array], { type: "image/jpeg" });
+        
+          setCardNameBuffer((prev) => {
+            const updated = [...prev, cardNameBlob];
+            if (updated.length > 10) updated.shift();  // keep last 10
+            return updated;
+          });
+        }
 
         setConfidenceBuffer((prev) => {
           const updated = [...prev, confidence];
@@ -113,9 +136,9 @@ function App() {
   
           const avg = updated.reduce((sum, val) => sum + val, 0) / updated.length;
           setPrediction(avg.toFixed(2));
-          setLabel(avg >= 0.69 ? "Pokemon Card" : "Not a Pokemon Card");
+          setLabel(avg >= 0.8 ? "Pokemon Card" : "Not a Pokemon Card");
 
-          if(avg >= 0.69) { setCardDetected(true); } else { setCardDetected(false); }
+          if(avg >= 0.8) { setCardDetected(true); } else { setCardDetected(false); }
   
           return updated;
         });      } catch (err) {
@@ -130,7 +153,7 @@ function App() {
     if (isCameraActive && !cardDetected) {
       interval = setInterval(() => {
         captureAndSendFrame();
-      }, 150);
+      }, 250);
     }
     return () => clearInterval(interval);
   }, [isCameraActive, cardDetected]);
@@ -141,11 +164,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (cardDetected && imageBuffer.length === 10) {
+    if (cardDetected && cardNameBuffer.length === 10) {
       console.log("10 images found");
       const formData = new FormData();
-      imageBuffer.forEach((imgBlob, index) => {
-        formData.append("images", imgBlob, `frame_${index}.jpg`);
+      cardNameBuffer.forEach((imgBlob, index) => {
+        formData.append("images", imgBlob, `card_name_frame_${index}.jpg`);
       });
   
       fetch("http://localhost:3001/ocr", {
@@ -155,11 +178,46 @@ function App() {
       .then(res => res.json())
       .then(data => {
         console.log("OCR Results:", data);
+        setMajorityVoteName(data.majority_vote.name); 
+        setMajorityVoteHp(data.majority_vote.hp);
         // You can now use the OCR results for narrowing card candidates
       })
       .catch(err => console.error("OCR request failed", err));
     }
-  }, [cardDetected, imageBuffer]);
+  }, [cardDetected, cardNameBuffer]);
+
+    const fetchCardData = async (
+      pokemonName: string,
+      hp: string,
+      setId: string
+    ) => {
+      const query = encodeURIComponent(`name:"${pokemonName}" hp:${hp} set.id:${setId}`);
+      const url = `https://api.pokemontcg.io/v2/cards?q=${query}`;
+      console.log("Fetching card data from URL:", url);
+    
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch card data");
+    
+      const data = await res.json();
+      return data.data;  // Return just the array of cards
+    };
+  
+
+  useEffect(() => {
+    if (majorityVoteName && majorityVoteHp && selectedSet) {
+      fetchCardData(majorityVoteName, majorityVoteHp, selectedSet)
+        .then(data => {
+          setCardResults(data);
+        })
+        .catch(err => console.error("Failed to fetch:", err));
+    }
+  }, [majorityVoteName, majorityVoteHp, selectedSet]);
+
+  useEffect(() => {
+    if (cardResults) {
+      console.log("Updated cardResults:", cardResults);
+    }
+  }, [cardResults]);
   
 
   return (
@@ -179,7 +237,7 @@ function App() {
           <div className="setting-container">
             <SetSelector onSelect={(set) => {
               console.log("Selected set:", set);
-              // Pass set.id or set.name to your card search logic
+              setSelectedSet(set.id);
             }} />
 
             {/* Camera Controls*/}
@@ -260,6 +318,12 @@ function App() {
               <div className="grid-item">
                 <p>Cropped</p>
                 <img src={processingStages.cropped} className="Cropped" />
+              </div>
+            )}
+            {processingStages.card_name && (
+              <div className="grid-item">
+                <p>Card Name</p>
+                <img src={processingStages.card_name} className="Name" />
               </div>
             )}
           </div>
