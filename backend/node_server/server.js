@@ -11,7 +11,7 @@ const port = 3001;
 const upload = multer({ dest: 'uploads/' });
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'https://pokemon-tcg-price-scanner-production.up.railway.app',
 }));
 app.use(express.json());
 
@@ -24,7 +24,7 @@ app.post('/predict', upload.single('file'), async (req, res) => {
   form.append('file', fs.createReadStream(req.file.path));
 
   try {
-    const response = await fetch('http://0.0.0.0:5000/predict', {
+    const response = await fetch('pokemon-tcg-price-scanner-model.up.railway.app/predict', {
       method: 'POST',
       body: form,
     });
