@@ -24,7 +24,7 @@ app.post('/predict', upload.single('file'), async (req, res) => {
   form.append('file', fs.createReadStream(req.file.path));
 
   try {
-    const response = await fetch('pokemon-tcg-price-scanner-model.up.railway.app/predict', {
+    const response = await fetch('https://pokemon-tcg-price-scanner-model.up.railway.app/predict', {
       method: 'POST',
       body: form,
     });
