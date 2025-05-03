@@ -11,6 +11,9 @@ import os
 MODEL_URL = "https://pokemon-model.s3.us-east-2.amazonaws.com/pokemon_card_detector.h5"
 MODEL_PATH = "pokemon_card_detector.h5"
 
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+
 def download_model():
     if not os.path.exists(MODEL_PATH):
         print(f"Downloading model from {MODEL_URL}...")
@@ -26,7 +29,10 @@ def download_model():
 download_model()
 
 app = Flask(__name__)
-model = tf.keras.models.load_model(MODEL_PATH)
+def get_model():
+    if not hasattr(app, 'model'):
+        app.model = tf.keras.models.load_model(MODEL_PATH)
+    return app.model
 
 def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -85,6 +91,8 @@ def encode_img(img, is_gray=False):
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    model = get_model()
+    
     file = request.files.get("file")
     if file is None:
         return jsonify({"error": "No file uploaded"}), 400
