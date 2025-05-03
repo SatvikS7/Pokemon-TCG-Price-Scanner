@@ -10,7 +10,9 @@ const app = express();
 const port = 3001;
 const upload = multer({ dest: 'uploads/' });
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+}));
 app.use(express.json());
 
 app.get('/', (req, res) => {
