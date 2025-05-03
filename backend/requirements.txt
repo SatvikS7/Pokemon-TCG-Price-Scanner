@@ -3,7 +3,7 @@ Flask-Cors
 easyocr
 opencv-python
 opencv-python-headless
-numpymo
+numpy
 pandas
 matplotlib
 scikit-learn
