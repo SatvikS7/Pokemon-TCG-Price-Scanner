@@ -91,7 +91,7 @@ function App() {
       formData.append("file", blob, "frame.jpg");
 
       try {
-        const res = await fetch("/api/predict", {
+        const res = await fetch("https://pokemon-tcg-price-scanner-api.up.railway.app/api/predict", {
           method: "POST",
           body: formData,
         });
@@ -171,7 +171,7 @@ function App() {
         formData.append("images", imgBlob, `card_name_frame_${index}.jpg`);
       });
   
-      fetch("/api/ocr", {
+      fetch("https://pokemon-tcg-price-scanner-api.up.railway.app/api/ocr", {
         method: "POST",
         body: formData,
       })
