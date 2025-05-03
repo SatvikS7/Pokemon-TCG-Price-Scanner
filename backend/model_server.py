@@ -5,9 +5,28 @@ from PIL import Image
 import io
 import cv2
 import base64
+import requests
+import os
+
+MODEL_URL = "https://pokemon-model.s3.us-east-2.amazonaws.com/pokemon_card_detector.h5"
+MODEL_PATH = "pokemon_card_detector.h5"
+
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        print(f"Downloading model from {MODEL_URL}...")
+        response = requests.get(MODEL_URL, stream=True)
+        if response.status_code == 200:
+            with open(MODEL_PATH, 'wb') as f:
+                for chunk in response.iter_content(1024):
+                    f.write(chunk)
+            print("Model downloaded successfully.")
+        else:
+            raise Exception(f"Failed to download model. Status code: {response.status_code}")
+
+download_model()
 
 app = Flask(__name__)
-model = tf.keras.models.load_model("../model/pokemon_card_detector.h5")
+model = tf.keras.models.load_model("pokemon_card_detector.h5")
 
 def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
