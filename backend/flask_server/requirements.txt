@@ -13,3 +13,4 @@ tensorflow-cpu
 keras
 requests
 pytesseract
+gunicorn

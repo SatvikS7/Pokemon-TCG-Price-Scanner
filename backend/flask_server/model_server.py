@@ -26,7 +26,7 @@ def download_model():
 download_model()
 
 app = Flask(__name__)
-model = tf.keras.models.load_model("pokemon_card_detector.h5")
+model = tf.keras.models.load_model(MODEL_PATH)
 
 def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
