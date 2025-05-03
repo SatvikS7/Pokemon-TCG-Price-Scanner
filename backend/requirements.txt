@@ -3,13 +3,13 @@ Flask-Cors
 easyocr
 opencv-python
 opencv-python-headless
-numpy<2.0  
+numpymo
 pandas
 matplotlib
 scikit-learn
 joblib
 Pillow
-tensorflow>=2.16,<3.0 
+tensorflow-cpu
 keras
 requests
 pytesseract
