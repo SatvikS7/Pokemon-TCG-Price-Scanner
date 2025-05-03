@@ -22,7 +22,7 @@ app.post('/predict', upload.single('file'), async (req, res) => {
   form.append('file', fs.createReadStream(req.file.path));
 
   try {
-    const response = await fetch('http://localhost:5000/predict', {
+    const response = await fetch('http://0.0.0.0:5000/predict', {
       method: 'POST',
       body: form,
     });
@@ -112,6 +112,6 @@ app.post("/ocr", upload.array("images", 10), async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server is running on: ${port}`);
 });

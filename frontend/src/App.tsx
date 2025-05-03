@@ -91,7 +91,7 @@ function App() {
       formData.append("file", blob, "frame.jpg");
 
       try {
-        const res = await fetch("http://localhost:3001/predict", {
+        const res = await fetch("http://0.0.0.0:3001/predict", {
           method: "POST",
           body: formData,
         });
@@ -171,7 +171,7 @@ function App() {
         formData.append("images", imgBlob, `card_name_frame_${index}.jpg`);
       });
   
-      fetch("http://localhost:3001/ocr", {
+      fetch("http://0.0.0.0:3001/ocr", {
         method: "POST",
         body: formData,
       })
