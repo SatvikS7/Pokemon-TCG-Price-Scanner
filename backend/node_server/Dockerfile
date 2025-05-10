@@ -7,6 +7,6 @@ RUN npm install
 
 COPY . .
 
-CMD ["node", "server.js"]
+CMD ["npm", "run", "prod"]
 
 EXPOSE 3001
