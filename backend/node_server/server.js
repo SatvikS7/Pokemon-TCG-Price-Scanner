@@ -29,7 +29,7 @@ console.log(`CLIENT_URL: ${CLIENT_URL}`);
 if(CLIENT_URL !== '*') {
   console.log(`CORS enabled for ${CLIENT_URL}`);
   app.use(cors({
-    origin: CLIENT_URL,
+    origin: 'https://pokemon-tcg-price-scanner-production.up.railway.app',
   }));
 } else {
   app.use(cors());
