@@ -9,4 +9,4 @@ COPY . .
 
 CMD ["npm", "run", "prod"]
 
-EXPOSE 3001
+EXPOSE 8080
