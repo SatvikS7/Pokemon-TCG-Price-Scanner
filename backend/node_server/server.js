@@ -15,7 +15,7 @@ const upload = multer({ dest: 'uploads/' });
 
 const CLIENT_URL = process.env.CLIENT_URL
 const MODEL_URL = process.env.MODEL_URL;
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 const HOST = process.env.HOST || 'localhost';
 
 if (app.get('env') === 'development') {
@@ -29,7 +29,7 @@ console.log(`CLIENT_URL: ${CLIENT_URL}`);
 if(CLIENT_URL !== '*') {
   console.log(`CORS enabled for ${CLIENT_URL}`);
   app.use(cors({
-    origin: 'https://pokemon-tcg-price-scanner-production.up.railway.app',
+    origin: CLIENT_URL,
   }));
 } else {
   app.use(cors());
