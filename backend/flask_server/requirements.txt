@@ -8,4 +8,4 @@ Pillow
 tensorflow-cpu
 requests
 gunicorn
-
+dotenv

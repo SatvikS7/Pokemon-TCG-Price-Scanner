@@ -5,14 +5,33 @@ import fetch from 'node-fetch';
 import FormData from 'form-data';
 import fs from 'fs';
 import { performOCRFromBuffer } from "./ocr/ocr.js";
+import dotenv from 'dotenv';
+
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
+dotenv.config({ path: envFile });
 
 const app = express();
-const port = 3001;
 const upload = multer({ dest: 'uploads/' });
 
-app.use(cors({
-  origin: 'https://pokemon-tcg-price-scanner-production.up.railway.app',
-}));
+const CLIENT_URL = process.env.CLIENT_URL
+const MODEL_URL = process.env.MODEL_URL;
+const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || 'localhost';
+
+if (app.get('env') === 'development') {
+  console.log('Running in dev mode');
+} else {
+  console.log('Running in production');
+}
+
+if(CLIENT_URL !== '*') {
+  app.use(cors({
+    origin: CLIENT_URL,
+  }));
+} else {
+  app.use(cors());
+}
+
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -24,7 +43,7 @@ app.post('/predict', upload.single('file'), async (req, res) => {
   form.append('file', fs.createReadStream(req.file.path));
 
   try {
-    const response = await fetch('https://pokemon-tcg-price-scanner-model.up.railway.app/predict', {
+    const response = await fetch(`${MODEL_URL}/predict`, {
       method: 'POST',
       body: form,
     });
@@ -114,6 +133,6 @@ app.post("/ocr", upload.array("images", 10), async (req, res) => {
   }
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on: ${port}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server is running at http://${HOST}:${PORT}`);
 });

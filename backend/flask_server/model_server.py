@@ -7,8 +7,11 @@ import cv2
 import base64
 import requests
 import os
+from dotenv import load_dotenv
 
-MODEL_URL = "https://pokemon-model.s3.us-east-2.amazonaws.com/pokemon_card_detector.h5"
+load_dotenv()
+
+MODEL_URL = os.getenv("MODEL_URL", None)
 MODEL_PATH = "pokemon_card_detector.h5"
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -26,7 +29,8 @@ def download_model():
         else:
             raise Exception(f"Failed to download model. Status code: {response.status_code}")
 
-download_model()
+if MODEL_URL:
+    download_model()
 
 app = Flask(__name__)
 def get_model():
@@ -54,7 +58,7 @@ def crop_card_from_image(image):
             continue
 
         approx = cv2.approxPolyDP(cnt, 0.02 * cv2.arcLength(cnt, True), True)
-        if len(approx) == 4:  # looks like a rectangle
+        if len(approx) == 4: 
             card_like_contours.append(cnt)
 
     if not card_like_contours:
@@ -121,4 +125,9 @@ def predict():
         })
 
 if __name__ == "__main__":
-    app.run(port=5000)
+    port = int(os.getenv("PORT", 5000))
+    if MODEL_URL:
+        host = '0.0.0.0'
+    else:
+        host = 'localhost'
+    app.run(host=host, port=port)

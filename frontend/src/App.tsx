@@ -26,6 +26,10 @@ function App() {
     card_name?: string;
   }>({});
 
+  // Environment variables
+  const apiLink = import.meta.env.VITE_API_LINK;
+
+
 
 
   // Start the camera
@@ -91,7 +95,7 @@ function App() {
       formData.append("file", blob, "frame.jpg");
 
       try {
-        const res = await fetch("https://pokemon-tcg-price-scanner-api.up.railway.app/predict", {
+        const res = await fetch(`${apiLink}/predict`, {
           method: "POST",
           body: formData,
         });
@@ -171,7 +175,7 @@ function App() {
         formData.append("images", imgBlob, `card_name_frame_${index}.jpg`);
       });
   
-      fetch("https://pokemon-tcg-price-scanner-api.up.railway.app/ocr", {
+      fetch(`${apiLink}/ocr`, {
         method: "POST",
         body: formData,
       })
