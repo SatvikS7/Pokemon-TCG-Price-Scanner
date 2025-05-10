@@ -14,6 +14,11 @@ load_dotenv()
 MODEL_URL = os.getenv("MODEL_URL", None)
 MODEL_PATH = "pokemon_card_detector.h5"
 
+if MODEL_URL:
+    print(f"Using model from {MODEL_URL}")
+else:
+    print("NONE")
+
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 
