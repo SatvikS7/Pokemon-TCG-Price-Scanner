@@ -24,6 +24,8 @@ if (app.get('env') === 'development') {
   console.log('Running in production');
 }
 
+console.log(`CLIENT_URL: ${CLIENT_URL}`);
+
 if(CLIENT_URL !== '*') {
   app.use(cors({
     origin: CLIENT_URL,
