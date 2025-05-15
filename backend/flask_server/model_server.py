@@ -52,7 +52,7 @@ def crop_card_from_image(image):
     contours, _ = cv2.findContours(edges_dialate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("No contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate, None
+        return image, image, gray, blur, edges, edges_dialate, None, None
 
     min_area = 0.03 * image.shape[0] * image.shape[1]
     card_like_contours = []
@@ -68,7 +68,7 @@ def crop_card_from_image(image):
 
     if not card_like_contours:
         print("No rectangular card-like contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate, None
+        return image, image, gray, blur, edges, edges_dialate, None, None
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(card_contour)
@@ -78,10 +78,11 @@ def crop_card_from_image(image):
 
     cropped = image[y:y+h, x:x+w]
 
-    card_name_height = int(0.10 * cropped.shape[0])
-    card_name = cropped[:card_name_height, :]
+    card_crop = int(0.20 * cropped.shape[0])
+    card_name = cropped[:card_crop, :]
+    card_number = cropped[-card_crop:, :]
 
-    return cropped, image_cpy, gray, blur, edges, edges_dialate, card_name
+    return cropped, image_cpy, gray, blur, edges, edges_dialate, card_name, card_number 
 
 def preprocess(image):
     try:
@@ -108,7 +109,7 @@ def predict():
     
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
     img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    cropped_image, annotated_image, gray, blur, edges, edges_dialate, card_name = crop_card_from_image(img_np)
+    cropped_image, annotated_image, gray, blur, edges, edges_dialate, card_name, card_number = crop_card_from_image(img_np)
     img_tensor = preprocess(cropped_image)
     if img_tensor is None:
         return jsonify({
@@ -127,6 +128,7 @@ def predict():
         "edges": encode_img(edges, is_gray=True),
         "dilated": encode_img(edges_dialate, is_gray=True),
         "card_name": encode_img(card_name) if card_name is not None else None,
+        "card_number": encode_img(card_number) if card_number is not None else None,
         })
 
 if __name__ == "__main__":

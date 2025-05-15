@@ -11,7 +11,10 @@ function App() {
   const [label, setLabel] = useState<string | null>(null);
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
   const [cardDetected, setCardDetected] = useState<boolean>(false);
+  const [ocrTriggered, setOcrTriggered] = useState<boolean>(false);
+  const [ocrNumTriggered, setOcrNumTriggered] = useState<boolean>(false);
   const [cardNameBuffer, setCardNameBuffer] = useState<Blob[]>([]);
+  const [cardNumberBuffer, setCardNumberBuffer] = useState<Blob[]>([]);
   const [selectedSet, setSelectedSet] = useState<string | null>(null);
   const [majorityVoteName, setMajorityVoteName] = useState<string | null>(null);
   const [majorityVoteHp, setMajorityVoteHp] = useState<string | null>(null);
@@ -24,13 +27,33 @@ function App() {
     dilated?: string;
     cropped?: string;
     card_name?: string;
+    card_number?: string;
   }>({});
 
   // Environment variables
   const apiLink = import.meta.env.VITE_API_LINK;
 
+  const IMAGE_BUFFER_SIZE = 5;
+  const CONFIDENCE = 0.7;
 
+  // Helper Functions
+  function base64ToBlob(base64String: string, mimeType: string = "image/jpeg"): Blob {
+    const byteString = atob(base64String);
+    const arrayBuffer = new ArrayBuffer(byteString.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    for (let i = 0; i < byteString.length; i++) {
+      uint8Array[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([uint8Array], { type: mimeType });
+  }
 
+  function updateBuffer(setter: React.Dispatch<React.SetStateAction<Blob[]>>, blob: Blob, maxSize: number): void {
+    setter((prev) => {
+      const updated = [...prev, blob];
+      if (updated.length > maxSize) updated.shift();
+      return updated;
+    });
+  }
 
   // Start the camera
   const startCamera = async () => {
@@ -60,6 +83,8 @@ function App() {
     setConfidenceBuffer([]);
     setIsCameraActive(false);
     setCardDetected(false);
+    setOcrTriggered(false);
+    setOcrNumTriggered(false);
   };
 
   // Capture current video frame and send to backend
@@ -87,7 +112,7 @@ function App() {
       /*
       setImageBuffer(prev => {
         const updated = [...prev, blob];
-        if (updated.length > 10) updated.shift(); // keep last 10
+        if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
         return updated;
       });*/
 
@@ -115,34 +140,29 @@ function App() {
           edges: data.edges && `data:image/jpeg;base64,${data.edges}`,
           dilated: data.dilated && `data:image/jpeg;base64,${data.dilated}`,
           cropped: data.cropped_image && `data:image/jpeg;base64,${data.cropped_image}`,
-          card_name: data.card_name && `data:image/jpeg;base64,${data.card_name}`
+          card_name: data.card_name && `data:image/jpeg;base64,${data.card_name}`,
+          card_number: data.card_number && `data:image/jpeg;base64,${data.card_number}`,
         });
 
         if (data.card_name) {
-          const byteString = atob(data.card_name);  // decode base64
-          const arrayBuffer = new ArrayBuffer(byteString.length);
-          const uint8Array = new Uint8Array(arrayBuffer);
-          for (let i = 0; i < byteString.length; i++) {
-            uint8Array[i] = byteString.charCodeAt(i);
-          }
-          const cardNameBlob = new Blob([uint8Array], { type: "image/jpeg" });
-        
-          setCardNameBuffer((prev) => {
-            const updated = [...prev, cardNameBlob];
-            if (updated.length > 10) updated.shift();  // keep last 10
-            return updated;
-          });
+          const cardNameBlob = base64ToBlob(data.card_name);
+          updateBuffer(setCardNameBuffer, cardNameBlob, IMAGE_BUFFER_SIZE);
+        }
+
+        if (data.card_number) {
+          const cardNumberBlob = base64ToBlob(data.card_number);
+          updateBuffer(setCardNumberBuffer, cardNumberBlob, IMAGE_BUFFER_SIZE);
         }
 
         setConfidenceBuffer((prev) => {
           const updated = [...prev, confidence];
-          if (updated.length > 10) updated.shift(); // keep last 10 only
+          if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
   
           const avg = updated.reduce((sum, val) => sum + val, 0) / updated.length;
           setPrediction(avg.toFixed(2));
-          setLabel(avg >= 0.8 ? "Pokemon Card" : "Not a Pokemon Card");
+          setLabel(avg >= CONFIDENCE ? "Pokemon Card" : "Not a Pokemon Card");
 
-          if(avg >= 0.8) { setCardDetected(true); } else { setCardDetected(false); }
+          if(avg >= CONFIDENCE) { setCardDetected(true); } else { setCardDetected(false); }
   
           return updated;
         });      } catch (err) {
@@ -168,8 +188,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (cardDetected && cardNameBuffer.length === 10) {
-      console.log("10 images found");
+    if (cardDetected && cardNameBuffer.length === IMAGE_BUFFER_SIZE && !ocrTriggered) {
+      console.log(`${IMAGE_BUFFER_SIZE} images found`);
+      setOcrTriggered(true);
+
       const formData = new FormData();
       cardNameBuffer.forEach((imgBlob, index) => {
         formData.append("images", imgBlob, `card_name_frame_${index}.jpg`);
@@ -180,7 +202,7 @@ function App() {
         body: formData,
       })
       .then(res => res.json())
-      .then(data => {
+      .then(data => { 
         console.log("OCR Results:", data);
         setMajorityVoteName(data.majority_vote.name); 
         setMajorityVoteHp(data.majority_vote.hp);
@@ -189,6 +211,28 @@ function App() {
       .catch(err => console.error("OCR request failed", err));
     }
   }, [cardDetected, cardNameBuffer]);
+
+  useEffect(() => {
+    if (cardDetected && cardNumberBuffer.length === IMAGE_BUFFER_SIZE && !ocrNumTriggered) {
+      console.log(`${IMAGE_BUFFER_SIZE} images found`);
+      setOcrNumTriggered(true);
+
+      const formData = new FormData();
+      cardNumberBuffer.forEach((imgBlob, index) => {
+        formData.append("images", imgBlob, `card_number_frame_${index}.jpg`);
+      });
+  
+      fetch(`${apiLink}/ocr`, {
+        method: "POST",
+        body: formData,
+      })
+      .then(res => res.json())
+      .then(data => { 
+        console.log("OCR Results:", data);
+      })
+      .catch(err => console.error("OCR request failed", err));
+    }
+  }, [cardDetected, cardNumberBuffer]);
 
     const fetchCardData = async (
       pokemonName: string,
@@ -203,7 +247,7 @@ function App() {
       if (!res.ok) throw new Error("Failed to fetch card data");
     
       const data = await res.json();
-      return data.data;  // Return just the array of cards
+      return data.data;  
     };
   
 
@@ -328,6 +372,12 @@ function App() {
               <div className="grid-item">
                 <p>Card Name</p>
                 <img src={processingStages.card_name} className="Name" />
+              </div>
+            )}
+            {processingStages.card_number && (
+              <div className="grid-item">
+                <p>Card Number</p>
+                <img src={processingStages.card_number} className="Number" />
               </div>
             )}
           </div>

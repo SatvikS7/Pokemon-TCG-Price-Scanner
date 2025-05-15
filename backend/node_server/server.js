@@ -69,7 +69,10 @@ app.post("/ocr", upload.array("images", 10), async (req, res) => {
 
     for (const file of req.files) {
       const buffer = fs.readFileSync(file.path);
-      const text = await performOCRFromBuffer(buffer);
+      let text = await performOCRFromBuffer(buffer);
+      text = text.replace(/[^A-Za-z0-9 ]+/g, "");
+      text = text.replace(/\s+/g, " ").trim();
+
       results.push({ filename: file.originalname, text });
 
       // Clean up the file after processing
