@@ -66,14 +66,21 @@ app.post("/ocr", upload.array("images", 10), async (req, res) => {
     const results = [];
     const names = [];
     const hps = [];
+    const setIdentifiers = [];
+    const regexPatterns = [/(\d{1,3}\/\d{1,3})/, /[A-Z]{1,3}\d{1,4}/];
 
     for (const file of req.files) {
       const buffer = fs.readFileSync(file.path);
-      let text = await performOCRFromBuffer(buffer);
-      text = text.replace(/[^A-Za-z0-9 ]+/g, "");
-      text = text.replace(/\s+/g, " ").trim();
+      let text_OR = await performOCRFromBuffer(buffer);
+      let text = text_OR.replace(/[^A-Za-z0-9 /]+/g, "");
+      text = text_OR.replace(/\s+/g, " ").trim();
 
-      results.push({ filename: file.originalname, text });
+      for (const pattern of regexPatterns) {
+        const match = text.match(pattern);
+        if (match) setIdentifiers.push(match[0]);
+      }
+
+      results.push({ filename: file.originalname, text, text_OR });
 
       // Clean up the file after processing
       fs.unlinkSync(file.path);
@@ -104,7 +111,20 @@ app.post("/ocr", upload.array("images", 10), async (req, res) => {
       }
 
       // Get the largest number found (if any)
-      let foundHp = numbers.length > 0 ? Math.max(...numbers) : null;
+      let foundHp = null;
+      if (numbers.length > 0) {
+        let maxNum = Math.max(...numbers);
+        if (maxNum < 30) { foundHp = null;} // current min HP value (5/15/2025)
+        if (maxNum <= 340) { // Current max HP value (5/15/2025)
+          foundHp = maxNum; 
+        } else {
+          const candidates = [Math.floor(maxNum / 10), maxNum % 1000];
+          const validCandidates = candidates.filter(n => n <= 340 && n % 10 === 0);
+          if (validCandidates.length > 0) {
+            foundHp = Math.max(...validCandidates);
+          }
+        }
+      }
 
       if (longestWord) names.push(longestWord);
       if (foundHp !== null) hps.push(foundHp.toString());
@@ -121,16 +141,19 @@ app.post("/ocr", upload.array("images", 10), async (req, res) => {
 
     const votedName = majorityVote(names);
     const votedHp = majorityVote(hps);
+    const votedSetId = majorityVote(setIdentifiers);
 
     res.json({
       ocr_results: results,
       majority_vote: {
         name: votedName,
         hp: votedHp,
+        set_id: votedSetId,
       },
       votes: {
         all_names: names,
         all_hps: hps,
+        all_set_ids: setIdentifiers,
       },
     });
   } catch (err) {

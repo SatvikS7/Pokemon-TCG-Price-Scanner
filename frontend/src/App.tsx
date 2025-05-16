@@ -33,8 +33,8 @@ function App() {
   // Environment variables
   const apiLink = import.meta.env.VITE_API_LINK;
 
-  const IMAGE_BUFFER_SIZE = 5;
-  const CONFIDENCE = 0.7;
+  const IMAGE_BUFFER_SIZE = 10;
+  const CONFIDENCE = 0.9;
 
   // Helper Functions
   function base64ToBlob(base64String: string, mimeType: string = "image/jpeg"): Blob {
@@ -380,6 +380,21 @@ function App() {
                 <img src={processingStages.card_number} className="Number" />
               </div>
             )}
+          </div>
+        )}
+
+        {/* Display Final 10 Card Number Images */}
+        {cardDetected && cardNumberBuffer.length === IMAGE_BUFFER_SIZE && (
+          <div className="captured-section">
+            <h2>Final 10 Card Number Images:</h2>
+            <div className="processing-grid">
+              {cardNumberBuffer.map((blob, index) => (
+                <div key={index} className="grid-item">
+                  <p>image_{index + 1}.png</p>
+                  <img src={URL.createObjectURL(blob)} alt={`image_${index + 1}`} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>

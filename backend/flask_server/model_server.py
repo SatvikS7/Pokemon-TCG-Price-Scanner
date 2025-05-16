@@ -14,6 +14,9 @@ load_dotenv()
 MODEL_URL = os.getenv("MODEL_URL", None)
 MODEL_PATH = "pokemon_card_detector.h5"
 
+TOP_PERCENT = 0.15
+BOTTOM_PERCENT = 0.93
+
 if MODEL_URL:
     print(f"Using model from {MODEL_URL}")
 else:
@@ -42,6 +45,39 @@ def get_model():
     if not hasattr(app, 'model'):
         app.model = tf.keras.models.load_model(MODEL_PATH)
     return app.model
+
+def preprocess_for_ocr(region):
+    
+    # Upscale to help OCR
+    region = cv2.resize(region, None, fx=3, fy=3, interpolation=cv2.INTER_LANCZOS4)
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+
+    # Improve contrast with CLAHE
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+
+    # Light blur to remove noise
+    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+
+    # Adaptive thresholding with tuned parameters
+    thresh = cv2.adaptiveThreshold(
+        blurred, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        11, 1
+    )
+
+    # OPTIONAL: Light morphological closing to bridge broken digits
+    kernel_close = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel_close)
+
+    # Light erosion to thin lines slightly (1x1 or 2x2 kernel)
+    kernel_erode = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
+    thinned = cv2.erode(closed, kernel_erode, iterations=1)
+
+    return thinned
 
 def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -78,9 +114,14 @@ def crop_card_from_image(image):
 
     cropped = image[y:y+h, x:x+w]
 
-    card_crop = int(0.20 * cropped.shape[0])
+    card_crop = int(TOP_PERCENT * cropped.shape[0])
     card_name = cropped[:card_crop, :]
-    card_number = cropped[-card_crop:, :]
+    
+    start_row = int(BOTTOM_PERCENT * cropped.shape[0])
+    end_row = int(0.98 * cropped.shape[0])
+    start_col = int(0.15 * cropped.shape[1])
+    end_col = int(0.28 * cropped.shape[1])
+    card_number = preprocess_for_ocr(cropped[start_row:end_row, start_col:end_col])
 
     return cropped, image_cpy, gray, blur, edges, edges_dialate, card_name, card_number 
 
