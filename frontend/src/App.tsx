@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import SetSelector from "./setSelector";
+import CardUpload from "./components/CardUpload";
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -13,8 +14,9 @@ function App() {
   const [cardDetected, setCardDetected] = useState<boolean>(false);
   const [ocrTriggered, setOcrTriggered] = useState<boolean>(false);
   const [ocrNumTriggered, setOcrNumTriggered] = useState<boolean>(false);
-  const [cardNameBuffer, setCardNameBuffer] = useState<Blob[]>([]);
+  //const [cardNameBuffer, setCardNameBuffer] = useState<Blob[]>([]);
   const [cardNumberBuffer, setCardNumberBuffer] = useState<Blob[]>([]);
+  const [cardNumberTextBuffer, setCardNumberTextBuffer] = useState<string[]>([]);
   const [selectedSet, setSelectedSet] = useState<string | null>(null);
   const [majorityVoteName, setMajorityVoteName] = useState<string | null>(null);
   const [majorityVoteHp, setMajorityVoteHp] = useState<string | null>(null);
@@ -28,6 +30,7 @@ function App() {
     cropped?: string;
     card_name?: string;
     card_number?: string;
+    card_number_text?: string;
   }>({});
 
   // Environment variables
@@ -53,6 +56,23 @@ function App() {
       if (updated.length > maxSize) updated.shift();
       return updated;
     });
+  }
+
+  function majorityVoteString(arr: string[]): string | null {
+    const count: Record<string, number> = {};
+    for (const item of arr) {
+      if (!item) continue; 
+      count[item] = (count[item] || 0) + 1;
+    }
+    let top: string | null = null;
+    let maxCount = 0;
+    for (const [key, val] of Object.entries(count)) {
+      if (val > maxCount) {
+        maxCount = val;
+        top = key;
+      }
+    }
+    return top;
   }
 
   // Start the camera
@@ -105,16 +125,9 @@ function App() {
     // Convert the canvas to a base64 image string
     const imageData = canvas.toDataURL("image/jpeg");
     //Uncomment for debugging
-    //setCapturedImage(imageData);  // Set captured image for display
 
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-      /*
-      setImageBuffer(prev => {
-        const updated = [...prev, blob];
-        if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
-        return updated;
-      });*/
 
       const formData = new FormData();
       formData.append("file", blob, "frame.jpg");
@@ -143,15 +156,30 @@ function App() {
           card_name: data.card_name && `data:image/jpeg;base64,${data.card_name}`,
           card_number: data.card_number && `data:image/jpeg;base64,${data.card_number}`,
         });
-
+        /*
         if (data.card_name) {
           const cardNameBlob = base64ToBlob(data.card_name);
           updateBuffer(setCardNameBuffer, cardNameBlob, IMAGE_BUFFER_SIZE);
-        }
+        }*/
 
         if (data.card_number) {
           const cardNumberBlob = base64ToBlob(data.card_number);
           updateBuffer(setCardNumberBuffer, cardNumberBlob, IMAGE_BUFFER_SIZE);
+        }
+
+        if (data.card_number_text) {
+          setCardNumberTextBuffer(prev => {
+            const updated = [...prev, data.card_number_text];
+            if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
+            return updated;
+          });
+        } else {
+          // If Python returned null or empty, you can push an empty string or skip:
+          setCardNumberTextBuffer(prev => {
+            const updated = [...prev, ""];
+            if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
+            return updated;
+          });
         }
 
         setConfidenceBuffer((prev) => {
@@ -186,7 +214,7 @@ function App() {
     startCamera();
     return () => stopCamera();
   }, []);
-
+/*
   useEffect(() => {
     if (cardDetected && cardNameBuffer.length === IMAGE_BUFFER_SIZE && !ocrTriggered) {
       console.log(`${IMAGE_BUFFER_SIZE} images found`);
@@ -232,25 +260,25 @@ function App() {
       })
       .catch(err => console.error("OCR request failed", err));
     }
-  }, [cardDetected, cardNumberBuffer]);
+  }, [cardDetected, cardNumberBuffer]);*/
 
-    const fetchCardData = async (
-      pokemonName: string,
-      hp: string,
-      setId: string
-    ) => {
-      const query = encodeURIComponent(`name:"${pokemonName}" hp:${hp} set.id:${setId}`);
-      const url = `https://api.pokemontcg.io/v2/cards?q=${query}`;
-      console.log("Fetching card data from URL:", url);
-    
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch card data");
-    
-      const data = await res.json();
-      return data.data;  
-    };
+  const fetchCardData = async (
+    pokemonName: string,
+    hp: string,
+    setId: string
+  ) => {
+    const query = encodeURIComponent(`name:"${pokemonName}" hp:${hp} set.id:${setId}`);
+    const url = `https://api.pokemontcg.io/v2/cards?q=${query}`;
+    console.log("Fetching card data from URL:", url);
   
-
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch card data");
+  
+    const data = await res.json();
+    return data.data;  
+  };
+  
+  /*
   useEffect(() => {
     if (majorityVoteName && majorityVoteHp && selectedSet) {
       fetchCardData(majorityVoteName, majorityVoteHp, selectedSet)
@@ -259,14 +287,22 @@ function App() {
         })
         .catch(err => console.error("Failed to fetch:", err));
     }
-  }, [majorityVoteName, majorityVoteHp, selectedSet]);
+  }, [majorityVoteName, majorityVoteHp, selectedSet]);*/
+
+  useEffect(() => {
+    // Only run when a card is detected and we have exactly IMAGE_BUFFER_SIZE text entries
+    if (cardDetected && cardNumberTextBuffer.length === IMAGE_BUFFER_SIZE) {
+      const votedSetId = majorityVoteString(cardNumberTextBuffer);
+      console.log("Majority‐voted set ID:", votedSetId);
+      //setMajorityVoteSetId(votedSetId);
+    }
+  }, [cardDetected, cardNumberTextBuffer]);
 
   useEffect(() => {
     if (cardResults) {
       console.log("Updated cardResults:", cardResults);
     }
   }, [cardResults]);
-  
 
   return (
     <div className="body">
@@ -399,18 +435,9 @@ function App() {
         )}
       </main>
       <canvas ref={canvasRef} style={{ display: "none" }} />
+      <CardUpload apiLink={apiLink} confidenceThreshold={0.9} />
     </div>
   );
 }
 
 export default App;
-
-  // Use to display captured image
-  //
-  //{/* Display Captured Image */}
-  //{capturedImage && (
-  //  <div className="mt-4">
-  //    <h2 className="text-xl">Captured Image:</h2>
-  //    <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
-  //  </div>
-  //)}

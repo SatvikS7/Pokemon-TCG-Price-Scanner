@@ -4,7 +4,9 @@ async function performOCRFromBuffer(buffer) {
   try {
     const result = await Tesseract.recognize(buffer, 'eng', {
       logger: (m) => console.log(m),
-      config: 'tessedit_char_whitelist=0123456789/ --psm 7'
+      tessedit_pageseg_mode: '7',
+      tessedit_ocr_engine_mode: '3',
+      tessedit_char_whitelist: '0123456789/',
     });
 
     return result.data.text.trim(); 

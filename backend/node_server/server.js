@@ -67,8 +67,8 @@ app.post("/ocr", upload.array("images", 10), async (req, res) => {
     const names = [];
     const hps = [];
     const setIdentifiers = [];
-    const regexPatterns = [/(\d{1,3}\/\d{1,3})/, /[A-Z]{1,3}\d{1,4}/];
-
+    const regexPatterns = [/(\d{1,3}\/\d{1,3})/];
+    //, /[A-Z]{1,3}\d{1,4}/
     for (const file of req.files) {
       const buffer = fs.readFileSync(file.path);
       let text_OR = await performOCRFromBuffer(buffer);

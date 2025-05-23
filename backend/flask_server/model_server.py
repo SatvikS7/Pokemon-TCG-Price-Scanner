@@ -8,6 +8,7 @@ import base64
 import requests
 import os
 from dotenv import load_dotenv
+import pytesseract
 
 load_dotenv()
 
@@ -15,7 +16,7 @@ MODEL_URL = os.getenv("MODEL_URL", None)
 MODEL_PATH = "pokemon_card_detector.h5"
 
 TOP_PERCENT = 0.15
-BOTTOM_PERCENT = 0.93
+BOTTOM_PERCENT = 0.945
 
 if MODEL_URL:
     print(f"Using model from {MODEL_URL}")
@@ -47,37 +48,25 @@ def get_model():
     return app.model
 
 def preprocess_for_ocr(region):
-    
-    # Upscale to help OCR
-    region = cv2.resize(region, None, fx=3, fy=3, interpolation=cv2.INTER_LANCZOS4)
+    h, w = region.shape[:2]
+    isHighRes = max(h, w) > 175
+    if isHighRes:
+        scale = 2.0
+    else:
+        scale = 3.0
 
-    # Convert to grayscale
-    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+    region = cv2.resize(region, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    mask = (region[:, :, 0] > 85) | (region[:, :, 1] > 85) | (region[:, :, 2] > 85)
+    res = np.zeros_like(region)
+    res[mask] = 255
+    return res
 
-    # Improve contrast with CLAHE
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    gray = clahe.apply(gray)
+def ocr_number(img):
+    pil_img = Image.fromarray(img)
+    custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789/'
+    text = pytesseract.image_to_string(pil_img, config=custom_config)
+    return text
 
-    # Light blur to remove noise
-    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-
-    # Adaptive thresholding with tuned parameters
-    thresh = cv2.adaptiveThreshold(
-        blurred, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV,
-        11, 1
-    )
-
-    # OPTIONAL: Light morphological closing to bridge broken digits
-    kernel_close = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel_close)
-
-    # Light erosion to thin lines slightly (1x1 or 2x2 kernel)
-    kernel_erode = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
-    thinned = cv2.erode(closed, kernel_erode, iterations=1)
-
-    return thinned
 
 def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -160,6 +149,13 @@ def predict():
     prediction = model.predict(img_tensor)
     confidence = round(float(prediction[0][0]), 2)
 
+    if card_number is not None:
+        card_number_text = ocr_number(card_number)
+        if card_number_text == "":
+            card_number_text = "hey"
+    else:   
+        card_number_text = "nothing found"
+
     return jsonify({
         "confidence": confidence,
         "annotated_image": encode_img(annotated_image),
@@ -170,6 +166,7 @@ def predict():
         "dilated": encode_img(edges_dialate, is_gray=True),
         "card_name": encode_img(card_name) if card_name is not None else None,
         "card_number": encode_img(card_number) if card_number is not None else None,
+        "card_number_text": card_number_text,
         })
 
 if __name__ == "__main__":

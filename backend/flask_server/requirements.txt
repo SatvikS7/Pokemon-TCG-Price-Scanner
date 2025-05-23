@@ -9,3 +9,4 @@ tensorflow-cpu
 requests
 gunicorn
 dotenv
+pytessseract
