@@ -12,21 +12,22 @@ function base64ToBlob(base64String: string, mimeType: string = "image/jpeg"): Bl
 }
 
 export interface CardUploadProps {
-  /** The base URL for your backend (e.g., "http://localhost:5000" or env var). */
   apiLink: string;
-  /** Confidence threshold (e.g. 0.9). If /predict returns confidence < this, show error. */
   confidenceThreshold?: number;
+  setID: string | null;
 }
 
 const CardUpload: React.FC<CardUploadProps> = ({
   apiLink,
   confidenceThreshold = 0.9,
+  setID,
 }) => {
   // Local state for preview, errors, and OCR response
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadOcrData, setUploadOcrData] = useState<any | null>(null);
-    const [processingStages, setProcessingStages] = useState<{
+  const [cardData, setCardData] = useState<any | null>(null);
+  const [processingStages, setProcessingStages] = useState<{
     gray?: string;
     blur?: string;
     edges?: string;
@@ -36,22 +37,13 @@ const CardUpload: React.FC<CardUploadProps> = ({
     card_number?: string;
   }>({});
 
-  /**
-   * Called whenever the user drops or selects a file.
-   * 1) Preview it
-   * 2) POST to `${apiLink}/predict`
-   * 3) If confidence ≥ threshold, convert data.card_number → Blob → POST to `${apiLink}/ocr`
-   * 4) Store OCR JSON in state
-   */
   const handleFileUpload = async (file: File) => {
     setUploadError(null);
     setUploadOcrData(null);
 
-    // 1) Show a quick preview
     const previewURL = URL.createObjectURL(file);
     setUploadedPreview(previewURL);
 
-    // 2) Send to /predict
     const predictForm = new FormData();
     predictForm.append("file", file, file.name);
 
@@ -76,8 +68,6 @@ const CardUpload: React.FC<CardUploadProps> = ({
       });
 
       const confidence = parseFloat(data.confidence);
-      console.log("Predict response:", data);
-
       if (confidence < confidenceThreshold) {
         setUploadError(
           "Low confidence (< " +
@@ -86,35 +76,22 @@ const CardUpload: React.FC<CardUploadProps> = ({
         );
         return;
       }
-      
-      // 3) data.card_number is a base64 JPEG; convert to Blob
-      if (!data.card_number) {
-        setUploadError("Couldn’t extract the set-number region from this card.");
-        return;
-      }
-      const cardNumberBlob = base64ToBlob(data.card_number);
 
-      // 4) POST that Blob to /ocr
-      const ocrForm = new FormData();
-      ocrForm.append("images", cardNumberBlob, "card_number.jpg");
-
-      const ocrRes = await fetch(`${apiLink}/ocr`, {
-        method: "POST",
-        body: ocrForm,
-      });
-      if (!ocrRes.ok) {
-        throw new Error(`OCR endpoint returned ${ocrRes.status}`);
-      }
-      const ocrJson = await ocrRes.json();
-
-      setUploadOcrData(ocrJson);
+      setUploadOcrData(data.card_number_text.split('/')[0]);      
+      console.log("OCR Result:", uploadOcrData);
+      const set = setID ? setID : "";
+      fetchCardData(set, uploadOcrData)
+        .then(data => {
+          setCardData(data);
+        })
+        .catch(err => console.error("Failed to fetch:", err));
+      console.log("Card Data:", cardData);
     } catch (err: any) {
       console.error(err);
       setUploadError(err.message || "Unknown error during upload workflow.");
     }
   };
 
-  // When a file is dropped onto the region
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setUploadError(null);
@@ -126,12 +103,10 @@ const CardUpload: React.FC<CardUploadProps> = ({
     handleFileUpload(file);
   };
 
-  // Prevent default so drop works
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  // When the hidden <input type="file" /> changes
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
     const file = e.target.files?.[0];
@@ -148,6 +123,22 @@ const CardUpload: React.FC<CardUploadProps> = ({
     setUploadOcrData(null);
     setProcessingStages({});
   };
+
+  const fetchCardData = async (
+      setId: string,
+      setNum: string
+    ) => {
+      const query = encodeURIComponent(`set.id:${setId} number:${setNum}`);
+      const url = `https://api.pokemontcg.io/v2/cards?q=${query}`;
+      console.log("Fetching card data from URL:", url);
+    
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch card data");
+    
+      const data = await res.json();
+      return data.data;  
+    };
+  
 
   return (
     <div style={{ marginBottom: "1.5rem" }}>
@@ -210,7 +201,7 @@ const CardUpload: React.FC<CardUploadProps> = ({
 
         {uploadOcrData && (
           <div style={{ marginTop: "1rem", textAlign: "left" }}>
-            <h3>OCR Results (set-number):</h3>
+            <h3>Price of Card (in Euro):</h3>
             <pre
               style={{
                 background: "#000000",
@@ -219,7 +210,7 @@ const CardUpload: React.FC<CardUploadProps> = ({
                 overflowX: "auto",
               }}
             >
-              {JSON.stringify(uploadOcrData, null, 2)}
+              hey
             </pre>
           </div>
         )}

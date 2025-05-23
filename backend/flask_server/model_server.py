@@ -15,7 +15,6 @@ load_dotenv()
 MODEL_URL = os.getenv("MODEL_URL", None)
 MODEL_PATH = "pokemon_card_detector.h5"
 
-TOP_PERCENT = 0.15
 BOTTOM_PERCENT = 0.945
 
 if MODEL_URL:
@@ -52,20 +51,25 @@ def preprocess_for_ocr(region):
     isHighRes = max(h, w) > 175
     if isHighRes:
         scale = 2.0
+        colorBound = 75
     else:
         scale = 3.0
+        colorBound = 175
 
     region = cv2.resize(region, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-    mask = (region[:, :, 0] > 85) | (region[:, :, 1] > 85) | (region[:, :, 2] > 85)
+    mask = (region[:, :, 0] < colorBound) & (region[:, :, 1] < colorBound) & (region[:, :, 2] < colorBound)
+    kernel = np.ones((3, 3), np.uint8)
+    dilated_mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1)
+    final_mask = dilated_mask == 0
     res = np.zeros_like(region)
-    res[mask] = 255
+    res[final_mask] = 255
     return res
 
 def ocr_number(img):
     pil_img = Image.fromarray(img)
     custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789/'
     text = pytesseract.image_to_string(pil_img, config=custom_config)
-    return text
+    return text.strip().replace(" ", "")
 
 
 def crop_card_from_image(image):
@@ -77,7 +81,7 @@ def crop_card_from_image(image):
     contours, _ = cv2.findContours(edges_dialate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("No contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate, None, None
+        return image, image, gray, blur, edges, edges_dialate, None
 
     min_area = 0.03 * image.shape[0] * image.shape[1]
     card_like_contours = []
@@ -93,7 +97,7 @@ def crop_card_from_image(image):
 
     if not card_like_contours:
         print("No rectangular card-like contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate, None, None
+        return image, image, gray, blur, edges, edges_dialate, None
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(card_contour)
@@ -102,9 +106,6 @@ def crop_card_from_image(image):
     cv2.drawContours(image_cpy, [card_contour], -1, (0, 255, 0), 2)
 
     cropped = image[y:y+h, x:x+w]
-
-    card_crop = int(TOP_PERCENT * cropped.shape[0])
-    card_name = cropped[:card_crop, :]
     
     start_row = int(BOTTOM_PERCENT * cropped.shape[0])
     end_row = int(0.98 * cropped.shape[0])
@@ -112,7 +113,7 @@ def crop_card_from_image(image):
     end_col = int(0.28 * cropped.shape[1])
     card_number = preprocess_for_ocr(cropped[start_row:end_row, start_col:end_col])
 
-    return cropped, image_cpy, gray, blur, edges, edges_dialate, card_name, card_number 
+    return cropped, image_cpy, gray, blur, edges, edges_dialate, card_number 
 
 def preprocess(image):
     try:
@@ -139,7 +140,7 @@ def predict():
     
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
     img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    cropped_image, annotated_image, gray, blur, edges, edges_dialate, card_name, card_number = crop_card_from_image(img_np)
+    cropped_image, annotated_image, gray, blur, edges, edges_dialate, card_number = crop_card_from_image(img_np)
     img_tensor = preprocess(cropped_image)
     if img_tensor is None:
         return jsonify({
@@ -152,9 +153,9 @@ def predict():
     if card_number is not None:
         card_number_text = ocr_number(card_number)
         if card_number_text == "":
-            card_number_text = "hey"
+            card_number_text = "Image Unclear"
     else:   
-        card_number_text = "nothing found"
+        card_number_text = "Card Not Found"
 
     return jsonify({
         "confidence": confidence,
@@ -164,10 +165,9 @@ def predict():
         "blur": encode_img(blur, is_gray=True),
         "edges": encode_img(edges, is_gray=True),
         "dilated": encode_img(edges_dialate, is_gray=True),
-        "card_name": encode_img(card_name) if card_name is not None else None,
         "card_number": encode_img(card_number) if card_number is not None else None,
         "card_number_text": card_number_text,
-        })
+    })
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

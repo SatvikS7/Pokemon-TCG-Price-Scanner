@@ -12,23 +12,17 @@ function App() {
   const [label, setLabel] = useState<string | null>(null);
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
   const [cardDetected, setCardDetected] = useState<boolean>(false);
-  const [ocrTriggered, setOcrTriggered] = useState<boolean>(false);
-  const [ocrNumTriggered, setOcrNumTriggered] = useState<boolean>(false);
-  //const [cardNameBuffer, setCardNameBuffer] = useState<Blob[]>([]);
   const [cardNumberBuffer, setCardNumberBuffer] = useState<Blob[]>([]);
   const [cardNumberTextBuffer, setCardNumberTextBuffer] = useState<string[]>([]);
   const [selectedSet, setSelectedSet] = useState<string | null>(null);
-  const [majorityVoteName, setMajorityVoteName] = useState<string | null>(null);
-  const [majorityVoteHp, setMajorityVoteHp] = useState<string | null>(null);
+  const [majorityVoteSetNum, setMajorityVoteSetNum] = useState<string | null>(null);
   const [cardResults, setCardResults] = useState<any[]>([]);
-  //const [imageBuffer, setImageBuffer] = useState<Blob[]>([]);
   const [processingStages, setProcessingStages] = useState<{
     gray?: string;
     blur?: string;
     edges?: string;
     dilated?: string;
     cropped?: string;
-    card_name?: string;
     card_number?: string;
     card_number_text?: string;
   }>({});
@@ -103,8 +97,6 @@ function App() {
     setConfidenceBuffer([]);
     setIsCameraActive(false);
     setCardDetected(false);
-    setOcrTriggered(false);
-    setOcrNumTriggered(false);
   };
 
   // Capture current video frame and send to backend
@@ -153,14 +145,8 @@ function App() {
           edges: data.edges && `data:image/jpeg;base64,${data.edges}`,
           dilated: data.dilated && `data:image/jpeg;base64,${data.dilated}`,
           cropped: data.cropped_image && `data:image/jpeg;base64,${data.cropped_image}`,
-          card_name: data.card_name && `data:image/jpeg;base64,${data.card_name}`,
           card_number: data.card_number && `data:image/jpeg;base64,${data.card_number}`,
         });
-        /*
-        if (data.card_name) {
-          const cardNameBlob = base64ToBlob(data.card_name);
-          updateBuffer(setCardNameBuffer, cardNameBlob, IMAGE_BUFFER_SIZE);
-        }*/
 
         if (data.card_number) {
           const cardNumberBlob = base64ToBlob(data.card_number);
@@ -214,60 +200,12 @@ function App() {
     startCamera();
     return () => stopCamera();
   }, []);
-/*
-  useEffect(() => {
-    if (cardDetected && cardNameBuffer.length === IMAGE_BUFFER_SIZE && !ocrTriggered) {
-      console.log(`${IMAGE_BUFFER_SIZE} images found`);
-      setOcrTriggered(true);
-
-      const formData = new FormData();
-      cardNameBuffer.forEach((imgBlob, index) => {
-        formData.append("images", imgBlob, `card_name_frame_${index}.jpg`);
-      });
-  
-      fetch(`${apiLink}/ocr`, {
-        method: "POST",
-        body: formData,
-      })
-      .then(res => res.json())
-      .then(data => { 
-        console.log("OCR Results:", data);
-        setMajorityVoteName(data.majority_vote.name); 
-        setMajorityVoteHp(data.majority_vote.hp);
-        // You can now use the OCR results for narrowing card candidates
-      })
-      .catch(err => console.error("OCR request failed", err));
-    }
-  }, [cardDetected, cardNameBuffer]);
-
-  useEffect(() => {
-    if (cardDetected && cardNumberBuffer.length === IMAGE_BUFFER_SIZE && !ocrNumTriggered) {
-      console.log(`${IMAGE_BUFFER_SIZE} images found`);
-      setOcrNumTriggered(true);
-
-      const formData = new FormData();
-      cardNumberBuffer.forEach((imgBlob, index) => {
-        formData.append("images", imgBlob, `card_number_frame_${index}.jpg`);
-      });
-  
-      fetch(`${apiLink}/ocr`, {
-        method: "POST",
-        body: formData,
-      })
-      .then(res => res.json())
-      .then(data => { 
-        console.log("OCR Results:", data);
-      })
-      .catch(err => console.error("OCR request failed", err));
-    }
-  }, [cardDetected, cardNumberBuffer]);*/
 
   const fetchCardData = async (
-    pokemonName: string,
-    hp: string,
-    setId: string
+    setId: string,
+    setNum: string
   ) => {
-    const query = encodeURIComponent(`name:"${pokemonName}" hp:${hp} set.id:${setId}`);
+    const query = encodeURIComponent(`set.id:${setId} number:${setNum}`);
     const url = `https://api.pokemontcg.io/v2/cards?q=${query}`;
     console.log("Fetching card data from URL:", url);
   
@@ -278,23 +216,24 @@ function App() {
     return data.data;  
   };
   
-  /*
+  
   useEffect(() => {
-    if (majorityVoteName && majorityVoteHp && selectedSet) {
-      fetchCardData(majorityVoteName, majorityVoteHp, selectedSet)
+    if (majorityVoteSetNum && selectedSet) {
+      fetchCardData(selectedSet, majorityVoteSetNum)
         .then(data => {
           setCardResults(data);
         })
         .catch(err => console.error("Failed to fetch:", err));
     }
-  }, [majorityVoteName, majorityVoteHp, selectedSet]);*/
+  }, [selectedSet, majorityVoteSetNum]);
 
   useEffect(() => {
     // Only run when a card is detected and we have exactly IMAGE_BUFFER_SIZE text entries
     if (cardDetected && cardNumberTextBuffer.length === IMAGE_BUFFER_SIZE) {
-      const votedSetId = majorityVoteString(cardNumberTextBuffer);
-      console.log("Majority‐voted set ID:", votedSetId);
-      //setMajorityVoteSetId(votedSetId);
+      const votedSetNum = majorityVoteString(cardNumberTextBuffer);
+      const setNum = votedSetNum ? votedSetNum.split('/')[0] : '';
+      console.log("Majority‐voted set ID:", setNum);
+      setMajorityVoteSetNum(setNum);
     }
   }, [cardDetected, cardNumberTextBuffer]);
 
@@ -404,12 +343,6 @@ function App() {
                 <img src={processingStages.cropped} className="Cropped" />
               </div>
             )}
-            {processingStages.card_name && (
-              <div className="grid-item">
-                <p>Card Name</p>
-                <img src={processingStages.card_name} className="Name" />
-              </div>
-            )}
             {processingStages.card_number && (
               <div className="grid-item">
                 <p>Card Number</p>
@@ -435,7 +368,7 @@ function App() {
         )}
       </main>
       <canvas ref={canvasRef} style={{ display: "none" }} />
-      <CardUpload apiLink={apiLink} confidenceThreshold={0.9} />
+      <CardUpload apiLink={apiLink} confidenceThreshold={0.9} setID={selectedSet}/>
     </div>
   );
 }
