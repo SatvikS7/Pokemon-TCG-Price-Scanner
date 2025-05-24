@@ -7,8 +7,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<string>("");
-  // Uncomment for debugging
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);  
   const [label, setLabel] = useState<string | null>(null);
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
   const [cardDetected, setCardDetected] = useState<boolean>(false);
@@ -228,10 +227,10 @@ function App() {
   }, [selectedSet, majorityVoteSetNum]);
 
   useEffect(() => {
-    // Only run when a card is detected and we have exactly IMAGE_BUFFER_SIZE text entries
     if (cardDetected && cardNumberTextBuffer.length === IMAGE_BUFFER_SIZE) {
       const votedSetNum = majorityVoteString(cardNumberTextBuffer);
       const setNum = votedSetNum ? votedSetNum.split('/')[0] : '';
+      console.log("Card number text buffer:", cardNumberTextBuffer);
       console.log("Majority‐voted set ID:", setNum);
       setMajorityVoteSetNum(setNum);
     }

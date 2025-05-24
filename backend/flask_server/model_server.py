@@ -15,7 +15,7 @@ load_dotenv()
 MODEL_URL = os.getenv("MODEL_URL", None)
 MODEL_PATH = "pokemon_card_detector.h5"
 
-BOTTOM_PERCENT = 0.945
+BOTTOM_PERCENT = 0.94
 
 if MODEL_URL:
     print(f"Using model from {MODEL_URL}")
@@ -46,16 +46,9 @@ def get_model():
         app.model = tf.keras.models.load_model(MODEL_PATH)
     return app.model
 
-def preprocess_for_ocr(region):
-    h, w = region.shape[:2]
-    isHighRes = max(h, w) > 175
-    if isHighRes:
-        scale = 2.0
-        colorBound = 75
-    else:
-        scale = 3.0
-        colorBound = 175
-
+def preprocess_ocr_HighRes(region):
+    scale = 2.0
+    colorBound = 78
     region = cv2.resize(region, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
     mask = (region[:, :, 0] < colorBound) & (region[:, :, 1] < colorBound) & (region[:, :, 2] < colorBound)
     kernel = np.ones((3, 3), np.uint8)
@@ -64,6 +57,53 @@ def preprocess_for_ocr(region):
     res = np.zeros_like(region)
     res[final_mask] = 255
     return res
+
+def preprocess_ocr_LowRes(region):
+    # 1. Upscale and convert to grayscale
+    region = cv2.resize(region, None, fx=3, fy=3, interpolation=cv2.INTER_LANCZOS4)
+    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+    
+    # 2. Enhance contrast (preserves white outlines)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+    
+    # 3. Use Otsu's thresholding for automatic level selection
+    _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    # 4. Smart inversion (only if background is darker than text)
+    if np.mean(thresh) < 127:
+        thresh = cv2.bitwise_not(thresh)
+    
+    # 5. Remove outer black artifacts using contour area filtering
+    contours, _ = cv2.findContours(
+        cv2.bitwise_not(thresh), 
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+    
+    mask = np.zeros_like(thresh)
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area > 70:  # Minimum area for text components (adjust as needed)
+            cv2.drawContours(mask, [cnt], -1, 255, -1)
+    
+    # 6. Final clean image (black text on white)
+    final = cv2.bitwise_not(mask)
+    
+    # 7. Mild morphological closing to reconnect broken text
+    final = cv2.morphologyEx(final, cv2.MORPH_CLOSE, 
+                           cv2.getStructuringElement(cv2.MORPH_RECT, (1,1)))
+    
+    return final
+
+
+def preprocess_for_ocr(region):
+    h, w = region.shape[:2]
+    isHighRes = max(h, w) > 175
+    if isHighRes:
+        return preprocess_ocr_HighRes(region)
+    else:
+        return preprocess_ocr_LowRes(region)
 
 def ocr_number(img):
     pil_img = Image.fromarray(img)
@@ -109,8 +149,8 @@ def crop_card_from_image(image):
     
     start_row = int(BOTTOM_PERCENT * cropped.shape[0])
     end_row = int(0.98 * cropped.shape[0])
-    start_col = int(0.15 * cropped.shape[1])
-    end_col = int(0.28 * cropped.shape[1])
+    start_col = int(0.16 * cropped.shape[1])
+    end_col = int(0.29 * cropped.shape[1])
     card_number = preprocess_for_ocr(cropped[start_row:end_row, start_col:end_col])
 
     return cropped, image_cpy, gray, blur, edges, edges_dialate, card_number 

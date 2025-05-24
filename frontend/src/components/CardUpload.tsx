@@ -1,15 +1,4 @@
-import React, { useState } from "react";
-
-// Helper to convert a base64 JPEG string into a Blob
-function base64ToBlob(base64String: string, mimeType: string = "image/jpeg"): Blob {
-  const byteString = atob(base64String);
-  const arrayBuffer = new ArrayBuffer(byteString.length);
-  const uint8Array = new Uint8Array(arrayBuffer);
-  for (let i = 0; i < byteString.length; i++) {
-    uint8Array[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([uint8Array], { type: mimeType });
-}
+import React, { useEffect, useState } from "react";
 
 export interface CardUploadProps {
   apiLink: string;
@@ -26,16 +15,29 @@ const CardUpload: React.FC<CardUploadProps> = ({
   const [uploadedPreview, setUploadedPreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadOcrData, setUploadOcrData] = useState<any | null>(null);
-  const [cardData, setCardData] = useState<any | null>(null);
+  const [cardData, setCardData] = useState<any[]>([]);
   const [processingStages, setProcessingStages] = useState<{
     gray?: string;
     blur?: string;
     edges?: string;
     dilated?: string;
     cropped?: string;
-    card_name?: string;
     card_number?: string;
+    card_number_text?: string;
   }>({});
+
+    const [usdPrice, setUsdPrice] = useState<string | null>(null);
+
+    const convert = (from: string, to: string, amount: number) => {
+      fetch(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`)
+        .then((resp) => resp.json())
+        .then((data) => {
+          const convertedAmount = (amount * data.rates[to]).toFixed(2);
+          setUsdPrice(convertedAmount);
+        })
+        .catch(err => console.error("Conversion failed:", err));
+    };
+
 
   const handleFileUpload = async (file: File) => {
     setUploadError(null);
@@ -63,7 +65,6 @@ const CardUpload: React.FC<CardUploadProps> = ({
         edges: data.edges && `data:image/jpeg;base64,${data.edges}`,
         dilated: data.dilated && `data:image/jpeg;base64,${data.dilated}`,
         cropped: data.cropped_image && `data:image/jpeg;base64,${data.cropped_image}`,
-        card_name: data.card_name && `data:image/jpeg;base64,${data.card_name}`,
         card_number: data.card_number && `data:image/jpeg;base64,${data.card_number}`,
       });
 
@@ -77,15 +78,17 @@ const CardUpload: React.FC<CardUploadProps> = ({
         return;
       }
 
+      const ocrRes = data.card_number_text.split('/')[0];
       setUploadOcrData(data.card_number_text.split('/')[0]);      
-      console.log("OCR Result:", uploadOcrData);
+      console.log("OCR Result:", ocrRes);
       const set = setID ? setID : "";
-      fetchCardData(set, uploadOcrData)
+      
+      fetchCardData(set, ocrRes)
         .then(data => {
           setCardData(data);
         })
         .catch(err => console.error("Failed to fetch:", err));
-      console.log("Card Data:", cardData);
+      console.log("Card Data:", data);
     } catch (err: any) {
       console.error(err);
       setUploadError(err.message || "Unknown error during upload workflow.");
@@ -138,7 +141,23 @@ const CardUpload: React.FC<CardUploadProps> = ({
       const data = await res.json();
       return data.data;  
     };
-  
+
+    useEffect(() => {
+      if (cardData.length != 0) {
+        console.log("Euro Price:", cardData[0].cardmarket.prices.avg30);
+      }
+    }, [cardData]);
+
+    useEffect(() => {
+      if (cardData.length !== 0) {
+        const euroPrice = cardData[0]?.cardmarket?.prices?.avg30;
+        if (euroPrice) {
+          convert("EUR", "USD", euroPrice);
+        }
+      }
+    }, [cardData]);
+
+    
 
   return (
     <div style={{ marginBottom: "1.5rem" }}>
@@ -201,17 +220,7 @@ const CardUpload: React.FC<CardUploadProps> = ({
 
         {uploadOcrData && (
           <div style={{ marginTop: "1rem", textAlign: "left" }}>
-            <h3>Price of Card (in Euro):</h3>
-            <pre
-              style={{
-                background: "#000000",
-                padding: "0.5rem",
-                borderRadius: "4px",
-                overflowX: "auto",
-              }}
-            >
-              hey
-            </pre>
+            <h3>Price of Card (in USD): ${usdPrice}</h3>
           </div>
         )}
       </div>
@@ -246,12 +255,6 @@ const CardUpload: React.FC<CardUploadProps> = ({
               <div className="grid-item">
                 <p>Cropped</p>
                 <img src={processingStages.cropped} className="Cropped" />
-              </div>
-            )}
-            {processingStages.card_name && (
-              <div className="grid-item">
-                <p>Card Name</p>
-                <img src={processingStages.card_name} className="Name" />
               </div>
             )}
             {processingStages.card_number && (
