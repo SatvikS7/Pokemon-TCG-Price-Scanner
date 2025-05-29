@@ -120,7 +120,7 @@ def crop_card_from_image(image):
 
     contours, _ = cv2.findContours(edges_dialate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
-        print("No contours found — using original image")
+        #print("No contours found — using original image")
         return image, image, gray, blur, edges, edges_dialate, None
 
     min_area = 0.03 * image.shape[0] * image.shape[1]
@@ -136,7 +136,7 @@ def crop_card_from_image(image):
             card_like_contours.append(cnt)
 
     if not card_like_contours:
-        print("No rectangular card-like contours found — using original image")
+        #print("No rectangular card-like contours found — using original image")
         return image, image, gray, blur, edges, edges_dialate, None
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
@@ -172,6 +172,9 @@ def encode_img(img, is_gray=False):
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    raw_debug = request.args.get("debug", "false")
+    debug_flag = raw_debug.lower() in ["1", "true", "yes"]
+
     model = get_model()
     
     file = request.files.get("file")
@@ -197,7 +200,7 @@ def predict():
     else:   
         card_number_text = "Card Not Found"
 
-    return jsonify({
+    full_response = {
         "confidence": confidence,
         "annotated_image": encode_img(annotated_image),
         "cropped_image": encode_img(cropped_image),
@@ -207,7 +210,17 @@ def predict():
         "dilated": encode_img(edges_dialate, is_gray=True),
         "card_number": encode_img(card_number) if card_number is not None else None,
         "card_number_text": card_number_text,
-    })
+    }
+
+    if not debug_flag:
+        minimal_response = {
+            "confidence": confidence,
+            "cropped_image": full_response["cropped_image"],
+            "card_number_text": card_number_text,
+        }
+        return jsonify(minimal_response)
+
+    return jsonify(full_response)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
