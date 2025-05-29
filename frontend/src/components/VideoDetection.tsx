@@ -34,7 +34,6 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
   const [cardNumberBuffer, setCardNumberBuffer] = useState<Blob[]>([]);
   const [cardNumberTextBuffer, setCardNumberTextBuffer] = useState<string[]>([]);
   const [selectedSet, setSelectedSet] = useState<string | null>(null);
-  const [majorityVoteSetNum, setMajorityVoteSetNum] = useState<string | null>(null);
   const [cardResults, setCardResults] = useState<any[]>([]);
   const [processingStages, setProcessingStages] = useState<ProcessingStages>({});
   const [usdPrice, setUsdPrice] = useState<string | null>(null);
@@ -44,6 +43,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
   const IMAGE_BUFFER_SIZE = 10;
 
   // Helper Functions
+  /*
   const convert = (from: string, to: string, amount: number) => {
     fetch(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`)
       .then((resp) => resp.json())
@@ -52,7 +52,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
         setUsdPrice(convertedAmount);
       })
       .catch(err => console.error("Conversion failed:", err));
-  };
+  };*/
 
   function base64ToBlob(base64String: string, mimeType: string = "image/jpeg"): Blob {
     const byteString = atob(base64String);
@@ -83,7 +83,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
   function majorityVoteString(arr: string[]): string | null {
     const count: Record<string, number> = {};
     for (const item of arr) {
-      if (!item) continue; 
+      if (!item || item == "") continue; 
       count[item] = (count[item] || 0) + 1;
     }
     let top: string | null = null;
@@ -130,7 +130,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
     setPrediction("");
     setLabel("");
     setCardResults([]);
-    setUsdPrice(null);;
+    setUsdPrice(null);
   };
 
   // Capture current video frame and send to backend
@@ -245,24 +245,17 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
     return data.data;  
   };
   
-  /*
-  useEffect(() => {
-    if (majorityVoteSetNum && selectedSet) {
-      fetchCardData(selectedSet, majorityVoteSetNum)
-        .then(data => {
-          setCardResults(data);
-        })
-        .catch(err => console.error("Failed to fetch:", err));
-    }
-  }, [selectedSet, majorityVoteSetNum]);
-*/
   useEffect(() => {
     if (cardDetected && cardNumberTextBuffer.length === IMAGE_BUFFER_SIZE && selectedSet) {
       const votedSetNum = majorityVoteString(cardNumberTextBuffer);
       console.log("Card number text buffer:", cardNumberTextBuffer);
       console.log("Majority‐voted set ID:", votedSetNum);
       if (votedSetNum) {
-        fetchCardData(selectedSet, votedSetNum).catch((err) =>
+        fetchCardData(selectedSet, votedSetNum)
+          .then(data => {
+            setCardResults(data);
+          })
+          .catch((err) =>
           console.error("Failed to fetch card data:", err)
         );
       }
@@ -271,10 +264,10 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
 
   useEffect(() => {
     if (cardResults.length > 0) {
-      const euroPrice = cardResults[0]?.cardmarket?.prices?.avg30;
-      if (euroPrice) {
-        convert("EUR", "USD", euroPrice);
-      }
+      console.log("Card results:", cardResults);
+      const price = cardResults[0]?.tcgplayer?.prices?.holofoil?.market;
+      console.log("Card price:", price);
+      setUsdPrice(price);
     }
   }, [cardResults]);
 
@@ -330,6 +323,10 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
                 </p>
               )}
 
+              {/* Card Price */}
+                <p>
+                  Price: <span className="highlight">${usdPrice}</span>
+                </p>
             </div>
           </div>
         )}

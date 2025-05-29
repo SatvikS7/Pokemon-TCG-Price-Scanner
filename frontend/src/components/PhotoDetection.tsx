@@ -113,7 +113,7 @@ const PhotoDetection: React.FC<PhotoDetectionProps> = ({
             setCardData(data);
           })
           .catch(err => console.error("Failed to fetch:", err));
-          console.log("Card Data:", data);
+          //console.log("Card Data:", data);
       } else {
         setUploadError("No card number detected. Please try another image.");
       }
