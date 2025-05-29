@@ -48,7 +48,7 @@ def get_model():
 
 def preprocess_ocr_HighRes(region):
     scale = 2.0
-    colorBound = 78
+    colorBound = 74
     region = cv2.resize(region, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
     mask = (region[:, :, 0] < colorBound) & (region[:, :, 1] < colorBound) & (region[:, :, 2] < colorBound)
     kernel = np.ones((3, 3), np.uint8)

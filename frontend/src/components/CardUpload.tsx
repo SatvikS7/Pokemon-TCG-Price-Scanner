@@ -78,7 +78,13 @@ const CardUpload: React.FC<CardUploadProps> = ({
         return;
       }
 
-      const ocrRes = data.card_number_text.split('/')[0];
+      let ocrRes = data.card_number_text.split('/')[0];
+      if (ocrRes.length >= 3) {
+        ocrRes = ocrRes.substring(0, 3);
+      } 
+      if (parseInt(ocrRes) > 300) { 
+        ocrRes = ocrRes.substring(0, 2)
+      }
       setUploadOcrData(data.card_number_text.split('/')[0]);      
       console.log("OCR Result:", ocrRes);
       const set = setID ? setID : "";
