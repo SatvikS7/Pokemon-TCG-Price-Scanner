@@ -31,6 +31,7 @@ const PhotoDetection: React.FC<PhotoDetectionProps> = ({
   const [selectedSet, setSelectedSet] = useState<string | null>(null);
   const [processingStages, setProcessingStages] = useState<ProcessingStages>({});
   const [usdPrice, setUsdPrice] = useState<string | null>(null);
+  const [setSize, setSetSize] = useState<number>(0);
 
   const convert = (from: string, to: string, amount: number) => {
     fetch(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`)
@@ -101,7 +102,7 @@ const PhotoDetection: React.FC<PhotoDetectionProps> = ({
       if (ocrRes.length >= 3) {
         ocrRes = ocrRes.substring(0, 3);
       } 
-      if (parseInt(ocrRes) > 300) { 
+      if (parseInt(ocrRes) > setSize) { 
         ocrRes = ocrRes.substring(0, 2)
       }
       setUploadOcrData(ocrRes);      
@@ -244,6 +245,8 @@ const PhotoDetection: React.FC<PhotoDetectionProps> = ({
             <SetSelector onSelect={(set) => {
               console.log("Selected set:", set);
               setSelectedSet(set.id);
+              setSetSize(set.total);
+              console.log("Set Size:", set.total);  
             }} />
           </div>
           {/* Image Processing Stages */}
