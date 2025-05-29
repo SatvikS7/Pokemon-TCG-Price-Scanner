@@ -37,6 +37,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
   const [cardResults, setCardResults] = useState<any[]>([]);
   const [processingStages, setProcessingStages] = useState<ProcessingStages>({});
   const [usdPrice, setUsdPrice] = useState<string | null>(null);
+  const [setSize, setSetSize] = useState<number>(0);
 
 
   // Environment variables
@@ -192,7 +193,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
         if (data.card_number_text) {
           let ocrRes = data.card_number_text.split('/')[0];
           if (ocrRes.length >= 3) ocrRes = ocrRes.substring(0, 3);
-          if (parseInt(ocrRes) > 300) ocrRes = ocrRes.substring(0, 2)
+          if (parseInt(ocrRes) > setSize) ocrRes = ocrRes.substring(0, 2)
           updateTextBuffer(ocrRes);
         } else {
           updateTextBuffer("");
@@ -286,6 +287,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
             <SetSelector onSelect={(set) => {
               console.log("Selected set:", set);
               setSelectedSet(set.id);
+              setSetSize(set.total);
             }} />
 
             {/* Camera Controls*/}
