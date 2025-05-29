@@ -8,14 +8,14 @@ import base64
 import requests
 import os
 from dotenv import load_dotenv
+import pytesseract
 
 load_dotenv()
 
 MODEL_URL = os.getenv("MODEL_URL", None)
 MODEL_PATH = "pokemon_card_detector.h5"
 
-TOP_PERCENT = 0.15
-BOTTOM_PERCENT = 0.93
+BOTTOM_PERCENT = 0.94
 
 if MODEL_URL:
     print(f"Using model from {MODEL_URL}")
@@ -46,38 +46,71 @@ def get_model():
         app.model = tf.keras.models.load_model(MODEL_PATH)
     return app.model
 
-def preprocess_for_ocr(region):
-    
-    # Upscale to help OCR
+def preprocess_ocr_HighRes(region):
+    scale = 2.0
+    colorBound = 74
+    region = cv2.resize(region, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+    mask = (region[:, :, 0] < colorBound) & (region[:, :, 1] < colorBound) & (region[:, :, 2] < colorBound)
+    kernel = np.ones((3, 3), np.uint8)
+    dilated_mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1)
+    final_mask = dilated_mask == 0
+    res = np.zeros_like(region)
+    res[final_mask] = 255
+    return res
+
+def preprocess_ocr_LowRes(region):
+    # 1. Upscale and convert to grayscale
     region = cv2.resize(region, None, fx=3, fy=3, interpolation=cv2.INTER_LANCZOS4)
-
-    # Convert to grayscale
     gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-
-    # Improve contrast with CLAHE
+    
+    # 2. Enhance contrast (preserves white outlines)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    gray = clahe.apply(gray)
-
-    # Light blur to remove noise
-    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
-
-    # Adaptive thresholding with tuned parameters
-    thresh = cv2.adaptiveThreshold(
-        blurred, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV,
-        11, 1
+    enhanced = clahe.apply(gray)
+    
+    # 3. Use Otsu's thresholding for automatic level selection
+    _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    # 4. Smart inversion (only if background is darker than text)
+    if np.mean(thresh) < 127:
+        thresh = cv2.bitwise_not(thresh)
+    
+    # 5. Remove outer black artifacts using contour area filtering
+    contours, _ = cv2.findContours(
+        cv2.bitwise_not(thresh), 
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE
     )
+    
+    mask = np.zeros_like(thresh)
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area > 70:  # Minimum area for text components (adjust as needed)
+            cv2.drawContours(mask, [cnt], -1, 255, -1)
+    
+    # 6. Final clean image (black text on white)
+    final = cv2.bitwise_not(mask)
+    
+    # 7. Mild morphological closing to reconnect broken text
+    final = cv2.morphologyEx(final, cv2.MORPH_CLOSE, 
+                           cv2.getStructuringElement(cv2.MORPH_RECT, (1,1)))
+    
+    return final
 
-    # OPTIONAL: Light morphological closing to bridge broken digits
-    kernel_close = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel_close)
 
-    # Light erosion to thin lines slightly (1x1 or 2x2 kernel)
-    kernel_erode = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
-    thinned = cv2.erode(closed, kernel_erode, iterations=1)
+def preprocess_for_ocr(region):
+    h, w = region.shape[:2]
+    isHighRes = max(h, w) > 175
+    if isHighRes:
+        return preprocess_ocr_HighRes(region)
+    else:
+        return preprocess_ocr_LowRes(region)
 
-    return thinned
+def ocr_number(img):
+    pil_img = Image.fromarray(img)
+    custom_config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789/'
+    text = pytesseract.image_to_string(pil_img, config=custom_config)
+    return text.strip().replace(" ", "")
+
 
 def crop_card_from_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -88,7 +121,7 @@ def crop_card_from_image(image):
     contours, _ = cv2.findContours(edges_dialate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         print("No contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate, None, None
+        return image, image, gray, blur, edges, edges_dialate, None
 
     min_area = 0.03 * image.shape[0] * image.shape[1]
     card_like_contours = []
@@ -104,7 +137,7 @@ def crop_card_from_image(image):
 
     if not card_like_contours:
         print("No rectangular card-like contours found — using original image")
-        return image, image, gray, blur, edges, edges_dialate, None, None
+        return image, image, gray, blur, edges, edges_dialate, None
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(card_contour)
@@ -113,17 +146,14 @@ def crop_card_from_image(image):
     cv2.drawContours(image_cpy, [card_contour], -1, (0, 255, 0), 2)
 
     cropped = image[y:y+h, x:x+w]
-
-    card_crop = int(TOP_PERCENT * cropped.shape[0])
-    card_name = cropped[:card_crop, :]
     
     start_row = int(BOTTOM_PERCENT * cropped.shape[0])
     end_row = int(0.98 * cropped.shape[0])
-    start_col = int(0.15 * cropped.shape[1])
-    end_col = int(0.28 * cropped.shape[1])
+    start_col = int(0.16 * cropped.shape[1])
+    end_col = int(0.29 * cropped.shape[1])
     card_number = preprocess_for_ocr(cropped[start_row:end_row, start_col:end_col])
 
-    return cropped, image_cpy, gray, blur, edges, edges_dialate, card_name, card_number 
+    return cropped, image_cpy, gray, blur, edges, edges_dialate, card_number 
 
 def preprocess(image):
     try:
@@ -150,7 +180,7 @@ def predict():
     
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
     img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    cropped_image, annotated_image, gray, blur, edges, edges_dialate, card_name, card_number = crop_card_from_image(img_np)
+    cropped_image, annotated_image, gray, blur, edges, edges_dialate, card_number = crop_card_from_image(img_np)
     img_tensor = preprocess(cropped_image)
     if img_tensor is None:
         return jsonify({
@@ -160,6 +190,13 @@ def predict():
     prediction = model.predict(img_tensor)
     confidence = round(float(prediction[0][0]), 2)
 
+    if card_number is not None:
+        card_number_text = ocr_number(card_number)
+        if card_number_text == "":
+            card_number_text = "Image Unclear"
+    else:   
+        card_number_text = "Card Not Found"
+
     return jsonify({
         "confidence": confidence,
         "annotated_image": encode_img(annotated_image),
@@ -168,9 +205,9 @@ def predict():
         "blur": encode_img(blur, is_gray=True),
         "edges": encode_img(edges, is_gray=True),
         "dilated": encode_img(edges_dialate, is_gray=True),
-        "card_name": encode_img(card_name) if card_name is not None else None,
         "card_number": encode_img(card_number) if card_number is not None else None,
-        })
+        "card_number_text": card_number_text,
+    })
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

@@ -1,33 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import SetSelector from "./setSelector";
+import CardUpload from "./components/CardUpload";
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<string>("");
-  // Uncomment for debugging
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);  // To hold the captured image
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);  
   const [label, setLabel] = useState<string | null>(null);
   const [confidenceBuffer, setConfidenceBuffer] = useState<number[]>([]);
   const [cardDetected, setCardDetected] = useState<boolean>(false);
-  const [ocrTriggered, setOcrTriggered] = useState<boolean>(false);
-  const [ocrNumTriggered, setOcrNumTriggered] = useState<boolean>(false);
-  const [cardNameBuffer, setCardNameBuffer] = useState<Blob[]>([]);
   const [cardNumberBuffer, setCardNumberBuffer] = useState<Blob[]>([]);
+  const [cardNumberTextBuffer, setCardNumberTextBuffer] = useState<string[]>([]);
   const [selectedSet, setSelectedSet] = useState<string | null>(null);
-  const [majorityVoteName, setMajorityVoteName] = useState<string | null>(null);
-  const [majorityVoteHp, setMajorityVoteHp] = useState<string | null>(null);
+  const [majorityVoteSetNum, setMajorityVoteSetNum] = useState<string | null>(null);
   const [cardResults, setCardResults] = useState<any[]>([]);
-  //const [imageBuffer, setImageBuffer] = useState<Blob[]>([]);
   const [processingStages, setProcessingStages] = useState<{
     gray?: string;
     blur?: string;
     edges?: string;
     dilated?: string;
     cropped?: string;
-    card_name?: string;
     card_number?: string;
+    card_number_text?: string;
   }>({});
 
   // Environment variables
@@ -53,6 +49,23 @@ function App() {
       if (updated.length > maxSize) updated.shift();
       return updated;
     });
+  }
+
+  function majorityVoteString(arr: string[]): string | null {
+    const count: Record<string, number> = {};
+    for (const item of arr) {
+      if (!item) continue; 
+      count[item] = (count[item] || 0) + 1;
+    }
+    let top: string | null = null;
+    let maxCount = 0;
+    for (const [key, val] of Object.entries(count)) {
+      if (val > maxCount) {
+        maxCount = val;
+        top = key;
+      }
+    }
+    return top;
   }
 
   // Start the camera
@@ -83,8 +96,6 @@ function App() {
     setConfidenceBuffer([]);
     setIsCameraActive(false);
     setCardDetected(false);
-    setOcrTriggered(false);
-    setOcrNumTriggered(false);
   };
 
   // Capture current video frame and send to backend
@@ -105,16 +116,9 @@ function App() {
     // Convert the canvas to a base64 image string
     const imageData = canvas.toDataURL("image/jpeg");
     //Uncomment for debugging
-    //setCapturedImage(imageData);  // Set captured image for display
 
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-      /*
-      setImageBuffer(prev => {
-        const updated = [...prev, blob];
-        if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
-        return updated;
-      });*/
 
       const formData = new FormData();
       formData.append("file", blob, "frame.jpg");
@@ -140,18 +144,27 @@ function App() {
           edges: data.edges && `data:image/jpeg;base64,${data.edges}`,
           dilated: data.dilated && `data:image/jpeg;base64,${data.dilated}`,
           cropped: data.cropped_image && `data:image/jpeg;base64,${data.cropped_image}`,
-          card_name: data.card_name && `data:image/jpeg;base64,${data.card_name}`,
           card_number: data.card_number && `data:image/jpeg;base64,${data.card_number}`,
         });
-
-        if (data.card_name) {
-          const cardNameBlob = base64ToBlob(data.card_name);
-          updateBuffer(setCardNameBuffer, cardNameBlob, IMAGE_BUFFER_SIZE);
-        }
 
         if (data.card_number) {
           const cardNumberBlob = base64ToBlob(data.card_number);
           updateBuffer(setCardNumberBuffer, cardNumberBlob, IMAGE_BUFFER_SIZE);
+        }
+
+        if (data.card_number_text) {
+          setCardNumberTextBuffer(prev => {
+            const updated = [...prev, data.card_number_text];
+            if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
+            return updated;
+          });
+        } else {
+          // If Python returned null or empty, you can push an empty string or skip:
+          setCardNumberTextBuffer(prev => {
+            const updated = [...prev, ""];
+            if (updated.length > IMAGE_BUFFER_SIZE) updated.shift();
+            return updated;
+          });
         }
 
         setConfidenceBuffer((prev) => {
@@ -187,86 +200,47 @@ function App() {
     return () => stopCamera();
   }, []);
 
-  useEffect(() => {
-    if (cardDetected && cardNameBuffer.length === IMAGE_BUFFER_SIZE && !ocrTriggered) {
-      console.log(`${IMAGE_BUFFER_SIZE} images found`);
-      setOcrTriggered(true);
-
-      const formData = new FormData();
-      cardNameBuffer.forEach((imgBlob, index) => {
-        formData.append("images", imgBlob, `card_name_frame_${index}.jpg`);
-      });
+  const fetchCardData = async (
+    setId: string,
+    setNum: string
+  ) => {
+    const query = encodeURIComponent(`set.id:${setId} number:${setNum}`);
+    const url = `https://api.pokemontcg.io/v2/cards?q=${query}`;
+    console.log("Fetching card data from URL:", url);
   
-      fetch(`${apiLink}/ocr`, {
-        method: "POST",
-        body: formData,
-      })
-      .then(res => res.json())
-      .then(data => { 
-        console.log("OCR Results:", data);
-        setMajorityVoteName(data.majority_vote.name); 
-        setMajorityVoteHp(data.majority_vote.hp);
-        // You can now use the OCR results for narrowing card candidates
-      })
-      .catch(err => console.error("OCR request failed", err));
-    }
-  }, [cardDetected, cardNameBuffer]);
-
-  useEffect(() => {
-    if (cardDetected && cardNumberBuffer.length === IMAGE_BUFFER_SIZE && !ocrNumTriggered) {
-      console.log(`${IMAGE_BUFFER_SIZE} images found`);
-      setOcrNumTriggered(true);
-
-      const formData = new FormData();
-      cardNumberBuffer.forEach((imgBlob, index) => {
-        formData.append("images", imgBlob, `card_number_frame_${index}.jpg`);
-      });
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch card data");
   
-      fetch(`${apiLink}/ocr`, {
-        method: "POST",
-        body: formData,
-      })
-      .then(res => res.json())
-      .then(data => { 
-        console.log("OCR Results:", data);
-      })
-      .catch(err => console.error("OCR request failed", err));
-    }
-  }, [cardDetected, cardNumberBuffer]);
-
-    const fetchCardData = async (
-      pokemonName: string,
-      hp: string,
-      setId: string
-    ) => {
-      const query = encodeURIComponent(`name:"${pokemonName}" hp:${hp} set.id:${setId}`);
-      const url = `https://api.pokemontcg.io/v2/cards?q=${query}`;
-      console.log("Fetching card data from URL:", url);
-    
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch card data");
-    
-      const data = await res.json();
-      return data.data;  
-    };
+    const data = await res.json();
+    return data.data;  
+  };
   
-
+  
   useEffect(() => {
-    if (majorityVoteName && majorityVoteHp && selectedSet) {
-      fetchCardData(majorityVoteName, majorityVoteHp, selectedSet)
+    if (majorityVoteSetNum && selectedSet) {
+      fetchCardData(selectedSet, majorityVoteSetNum)
         .then(data => {
           setCardResults(data);
         })
         .catch(err => console.error("Failed to fetch:", err));
     }
-  }, [majorityVoteName, majorityVoteHp, selectedSet]);
+  }, [selectedSet, majorityVoteSetNum]);
+
+  useEffect(() => {
+    if (cardDetected && cardNumberTextBuffer.length === IMAGE_BUFFER_SIZE) {
+      const votedSetNum = majorityVoteString(cardNumberTextBuffer);
+      const setNum = votedSetNum ? votedSetNum.split('/')[0] : '';
+      console.log("Card number text buffer:", cardNumberTextBuffer);
+      console.log("Majority‐voted set ID:", setNum);
+      setMajorityVoteSetNum(setNum);
+    }
+  }, [cardDetected, cardNumberTextBuffer]);
 
   useEffect(() => {
     if (cardResults) {
       console.log("Updated cardResults:", cardResults);
     }
   }, [cardResults]);
-  
 
   return (
     <div className="body">
@@ -368,12 +342,6 @@ function App() {
                 <img src={processingStages.cropped} className="Cropped" />
               </div>
             )}
-            {processingStages.card_name && (
-              <div className="grid-item">
-                <p>Card Name</p>
-                <img src={processingStages.card_name} className="Name" />
-              </div>
-            )}
             {processingStages.card_number && (
               <div className="grid-item">
                 <p>Card Number</p>
@@ -399,18 +367,9 @@ function App() {
         )}
       </main>
       <canvas ref={canvasRef} style={{ display: "none" }} />
+      <CardUpload apiLink={apiLink} confidenceThreshold={0.9} setID={selectedSet}/>
     </div>
   );
 }
 
 export default App;
-
-  // Use to display captured image
-  //
-  //{/* Display Captured Image */}
-  //{capturedImage && (
-  //  <div className="mt-4">
-  //    <h2 className="text-xl">Captured Image:</h2>
-  //    <img src={capturedImage} alt="Captured" className="border rounded-lg mt-2" />
-  //  </div>
-  //)}
