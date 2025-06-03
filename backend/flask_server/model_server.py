@@ -67,9 +67,23 @@ def preprocess_ocr_LowRes(region):
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
 
-    kernel = np.array([[ 0, -0.5,  0 ],
-                       [-0.5, 3.3, -0.5],
-                       [ 0, -0.5,  0 ]])
+    mean_brightness = np.mean(enhanced)
+    
+    if mean_brightness < 85:       # Dark region
+        print("Dark region detected")
+        kernel = np.array([[ 0, -1.0,  0 ],
+                           [-1.0, 5.0, -1.0],
+                           [ 0, -1.0,  0 ]])
+    elif mean_brightness > 170:    # Very bright region
+        print("Very bright region detected")
+        kernel = np.array([[ 0, -0.3,  0 ],
+                           [-0.3, 2.6, -0.3],
+                           [ 0, -0.3,  0 ]])
+    else:                          # Medium brightness
+        print("Medium brightness region detected")
+        kernel = np.array([[ 0, -0.5,  0 ],
+                           [-0.5, 3.0, -0.5],
+                           [ 0, -0.5,  0 ]])
     sharpened = cv2.filter2D(enhanced, -1, kernel)
     
     # 3. Use Otsu's thresholding for automatic level selection

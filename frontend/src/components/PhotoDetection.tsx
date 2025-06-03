@@ -246,7 +246,6 @@ const PhotoDetection: React.FC<PhotoDetectionProps> = ({
               console.log("Selected set:", set);
               setSelectedSet(set.id);
               setSetSize(set.total);
-              console.log("Set Size:", set.total);  
             }} />
           </div>
           {/* Image Processing Stages */}
