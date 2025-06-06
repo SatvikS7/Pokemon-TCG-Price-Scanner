@@ -55,6 +55,10 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
       .catch(err => console.error("Conversion failed:", err));
   };*/
 
+  const removeLeadingZeros = (str: string): string => {
+    return str.replace(/^0+(?!$)/, '');
+  };
+
   function base64ToBlob(base64String: string, mimeType: string = "image/jpeg"): Blob {
     const byteString = atob(base64String);
     const arrayBuffer = new ArrayBuffer(byteString.length);
@@ -194,6 +198,7 @@ const VideoDetection: React.FC<VideoDetectionProps> = ({
           let ocrRes = data.card_number_text.split('/')[0];
           if (ocrRes.length >= 3) ocrRes = ocrRes.substring(0, 3);
           if (parseInt(ocrRes) > setSize) ocrRes = ocrRes.substring(0, 2)
+          ocrRes = removeLeadingZeros(ocrRes);
           updateTextBuffer(ocrRes);
         } else {
           updateTextBuffer("");

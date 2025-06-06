@@ -43,6 +43,10 @@ const PhotoDetection: React.FC<PhotoDetectionProps> = ({
       .catch(err => console.error("Conversion failed:", err));
   };
 
+  const removeLeadingZeros = (str: string): string => {
+    return str.replace(/^0+(?!$)/, '');
+  };
+
 
   const handleFileUpload = async (file: File) => {
     setUploadError(null);
@@ -101,11 +105,12 @@ const PhotoDetection: React.FC<PhotoDetectionProps> = ({
       let ocrRes = data.card_number_text.split('/')[0];
       if (ocrRes.length >= 3) {
         ocrRes = ocrRes.substring(0, 3);
-      } 
-      if (parseInt(ocrRes) > setSize) { 
-        ocrRes = ocrRes.substring(0, 2)
       }
-      setUploadOcrData(ocrRes);      
+      if (parseInt(ocrRes) > setSize) {
+        ocrRes = ocrRes.substring(0, 2);
+      }
+      ocrRes = removeLeadingZeros(ocrRes);
+      setUploadOcrData(ocrRes);
       console.log("OCR Result:", ocrRes);
       const set = selectedSet ? selectedSet : "";
       if(ocrRes) {
