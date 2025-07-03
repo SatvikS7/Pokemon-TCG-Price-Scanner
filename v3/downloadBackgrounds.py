@@ -4,7 +4,7 @@ from PIL import Image
 from io import BytesIO
 
 # === CONFIGURATION ===
-UNSPLASH_ACCESS_KEY = "MflPAcNrREtFo6jBSpU0wqimMSJymgpiHun7Yt7gxR4"  # 🔐 Replace with your Unsplash API key
+UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 SEARCH_TERMS = [
     "desk", "table", "carpet", "flat lay", "wood texture", "nature", "car interior",
     "backpack", "keyboard", "blanket", "notebook", "concrete floor", "bed sheets",
@@ -36,7 +36,7 @@ def download_and_resize_image(url, save_path):
         img = Image.open(BytesIO(response.content)).convert("RGB")
         img = img.resize(RESIZE_TO)
         img.save(save_path)
-        print(f"Saved {save_path}")
+        #print(f"Saved {save_path}")
     except Exception as e:
         print(f"Failed to save {save_path}: {e}")
 
@@ -54,6 +54,7 @@ def main():
                 idx += 1
         except Exception as e:
             print(f"⚠️ Failed for term '{term}': {e}")
+        print(f"Completed term '{term}'")
 
 if __name__ == "__main__":
     main()
