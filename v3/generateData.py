@@ -30,14 +30,14 @@ augment = A.Compose([
     A.SafeRotate(limit=180,border_mode=cv2.BORDER_CONSTANT, fill=0, p=0.8), # rotate card without cropping
     A.RandomShadow(p=0.4), # create shadows on card
     A.Affine(
-        scale=[0.5, 2],
-        translate_percent=[-0.05, 0.05],
+        #scale=[0.5, 2],
         rotate=[-45, 45],
-        shear=[-15, 15],
+        shear=[-35, 35],
         keep_ratio=True,
+        fit_output=True,
         p=1.0
     ), # create tilt
-    A.PadIfNeeded(min_height=512, min_width=512, border_mode=cv2.BORDER_CONSTANT, fill=0, p=1.0),
+    #A.PadIfNeeded(min_height=512, min_width=512, border_mode=cv2.BORDER_CONSTANT, fill=0, p=1.0),
 ], additional_targets={"alpha": "mask"})
 
 def check_overlap(new_box, existing_boxes, iou_thresh=0.2):
@@ -54,15 +54,7 @@ def check_overlap(new_box, existing_boxes, iou_thresh=0.2):
 def paste_card(bg, rgba_card, existing_bboxes, draw_annotations=False):
     rgb_card = rgba_card[:, :, :3] # Extract RGB channels
     alpha = rgba_card[:, :, 3] # Extract alpha channel
-    
-    # Arbitrary padding to ensure rotations and augmentations don't crop the card
-    pad_size = 200
-    rgb_card = np.pad(rgb_card, ((pad_size, pad_size), (pad_size, pad_size), (0,0)), 
-                     mode='constant')
-    alpha = np.pad(alpha, ((pad_size, pad_size), (pad_size, pad_size)), 
-                  mode='constant')
-    
-    # Apply augmentations and save new image and alpha channel
+
     augmented = augment(image=rgb_card, alpha=alpha) 
     rgb_aug = augmented['image']
     alpha_aug = augmented['alpha']
@@ -91,7 +83,6 @@ def paste_card(bg, rgba_card, existing_bboxes, draw_annotations=False):
         if not check_overlap(proposed_box, existing_bboxes, iou_thresh=iou_thresh):
             break
     else:
-        #print(f"Failed to find non-overlapping position for card after {max_attempts} attempts.")
         return bg, None  # Couldn't find non-overlapping spot
 
 
@@ -110,34 +101,33 @@ def paste_card(bg, rgba_card, existing_bboxes, draw_annotations=False):
     ys = ys + y_offset
     contour = np.stack([xs, ys], axis=1).flatten().tolist()
     bbox = [int(x_offset), int(y_offset), int(new_w), int(new_h)]
-    #area = int(mask.sum())
+    
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Find center and normalized dimensions
-    x_min,y_min = x_offset, y_offset
-    x_max,y_max = x_offset+new_w, y_offset+new_h
-    xc = ((x_min+x_max)/2)/640
-    yc = ((y_min+y_max)/2)/640
-    wn = new_w/640
-    hn = new_h/640
+    if not contours:
+        print("No contours found in mask.")
+        return None, None
 
-    # polygon: use 4 corners of minAreaRect
-    pts = np.column_stack(np.where(mask)).astype(np.int32)
-    rect = cv2.minAreaRect(pts)
-    box4 = cv2.boxPoints(rect).astype(int)
+    # Get the largest contour (in case there are multiple disconnected regions)
+    largest_contour = max(contours, key=cv2.contourArea)
 
-    # adjust to global
-    box4[:,0]+=x_offset
-    box4[:,1]+=y_offset
+    # Simplify the contour (reduce number of points while preserving shape)
+    epsilon = 0.002 * cv2.arcLength(largest_contour, True)
+    approx_poly = cv2.approxPolyDP(largest_contour, epsilon, True)
 
-    # normalize polygon points
-    poly = []
-    for x,y in box4:
-        poly.append(x/640)
-        poly.append(y/640)
+    # Flatten and adjust coordinates
+    polygon_points = approx_poly.squeeze()  # Remove extra dimension
+    polygon_points = polygon_points.astype(float)  # Convert to float for division
+
+    # Adjust to global coordinates and normalize
+    polygon_points[:, 0] += x_offset
+    polygon_points[:, 1] += y_offset
+    polygon_points[:, 0] /= 640  # Normalize x
+    polygon_points[:, 1] /= 640  # Normalize y
 
     # save label line
     label_lines = []
-    label_line = f"0 {xc:.6f} {yc:.6f} {wn:.6f} {hn:.6f} " + " ".join(f"{p:.6f}" for p in poly)
+    label_line = "0 " + " ".join(f"{x:.6f} {y:.6f}" for x, y in polygon_points)
     label_lines.append(label_line)
     existing_bboxes.append(bbox)
 
@@ -149,11 +139,15 @@ def paste_card(bg, rgba_card, existing_bboxes, draw_annotations=False):
                      (0, 255, 0), 2)
         
         # Draw segmentation contour (red)
-        overlay = bg.copy()
-        contour_points = np.array(contour).reshape(-1, 2)
-        cv2.fillPoly(overlay, [contour_points], color=(0, 0, 255))
-        alpha = 0.3 
-        cv2.addWeighted(overlay, alpha, bg, 1 - alpha, 0, bg)
+        #overlay = bg.copy()
+        #contour_points = np.array(contour).reshape(-1, 2)
+        #cv2.fillPoly(overlay, [contour_points], color=(0, 0, 255))
+        #alpha = 0.3 
+        #cv2.addWeighted(overlay, alpha, bg, 1 - alpha, 0, bg)
+
+        global_polygon = (polygon_points * 640).astype(int)  # Scale back up for drawing
+        cv2.polylines(bg, [global_polygon], isClosed=True, color=(0, 0, 255), thickness=2)
+
 
     return bg, label_lines
 
