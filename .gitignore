@@ -23,11 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
-# Ignore dataset images
+# Ignore dataset images and labels
 *.png
 *.jpg
 *.jpeg
-!v3/synthetic_dataset/images/*.jpg
+v3/synthetic_dataset/labels/*.txt
 
 # Ignore virtual environment
 pokemon-card-env/
