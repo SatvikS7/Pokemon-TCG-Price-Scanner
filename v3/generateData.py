@@ -9,8 +9,8 @@ import albumentations as A
 # Paths
 CARD_DIR = "../dataset/pos_data"
 BACKGROUND_DIR = "backgrounds/"
-OUTPUT_IMG_DIR = "synthetic_dataset/images/"
-OUTPUT_LABEL_DIR = "synthetic_dataset/labels/"
+OUTPUT_IMG_DIR = "val/images/"
+OUTPUT_LABEL_DIR = "val/labels/"
 
 # Ensure output directory exists
 os.makedirs(OUTPUT_IMG_DIR, exist_ok=True)
@@ -21,7 +21,7 @@ card_paths = [os.path.join(CARD_DIR, f) for f in os.listdir(CARD_DIR) if f.endsw
 bg_paths = [os.path.join(BACKGROUND_DIR, f) for f in os.listdir(BACKGROUND_DIR) if f.endswith(('.jpg', '.png'))]
 
 # Number of images to generate; get approx 10,000 images with 8% fail rate
-NUM_SAMPLES = 11000
+NUM_SAMPLES = 2000
 
 # Define augmentations for cards
 augment = A.Compose([

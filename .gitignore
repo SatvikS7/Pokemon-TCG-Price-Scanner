@@ -27,7 +27,7 @@ dist-ssr
 *.png
 *.jpg
 *.jpeg
-v3/synthetic_dataset/labels/*.txt
+*.txt
 
 # Ignore virtual environment
 pokemon-card-env/
@@ -40,4 +40,6 @@ python_3.11.4_env/
 backend/model/pokemon_card_detector.h5
 notes.txt
 *.traineddata
+*.cache
+*.pt
 
