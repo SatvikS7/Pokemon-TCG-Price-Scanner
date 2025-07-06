@@ -5,12 +5,12 @@ model.train(
     data="custom_dataset.yaml",
     epochs=100,
     imgsz=640,
-    batch=8,
+    batch=16,
     device="0",
     workers=0,
     name="yolo11s-seg-custom",
     save_period=10,  # Save every 10 epochs
     save=True,  # Save the model after training
-    project="v3",  # Save in the v3 directory
+    project="card_identifier",  # Save in the card_identifier directory
     plots=True,
 )
