@@ -4,14 +4,13 @@ from PIL import Image
 from io import BytesIO
 
 # === CONFIGURATION ===
-UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
-SEARCH_TERMS = [
-    "desk", "table", "carpet", "flat lay", "wood texture", "nature", "car interior",
-    "backpack", "keyboard", "blanket", "notebook", "concrete floor", "bed sheets",
-    "bookshelf", "cardboard", "fabric texture", "plastic surface", "game board",
-    "workbench", "gaming setup", "mousepad", "window sill"
+UNSPLASH_ACCESS_KEY = "MflPAcNrREtFo6jBSpU0wqimMSJymgpiHun7Yt7gxR4"
+SEARCH_TERMS = ["books", "playing cards", "paper sheets", "boxes", "frames",
+                "posters", "magazines", "envelopes", "stationery", "notebooks",
+                "clutter", "messy"
 ]
-IMAGES_PER_TERM = 20  # Total images = len(SEARCH_TERMS) * IMAGES_PER_TERM
+IMAGES_PER_TERM = 130  # Total images = len(SEARCH_TERMS) * IMAGES_PER_TERM
+MAX_PER_PAGE = 30
 OUTPUT_DIR = "backgrounds"
 RESIZE_TO = (640, 640)
 
@@ -43,18 +42,24 @@ def download_and_resize_image(url, save_path):
 def main():
     idx = 0
     for term in SEARCH_TERMS:
-        print(f"Searching for '{term}'...")
-        try:
-            results = search_unsplash(term, per_page=IMAGES_PER_TERM)
+        downloaded = 0
+        page = 1
+        while downloaded < IMAGES_PER_TERM:
+            per_page = min(MAX_PER_PAGE, IMAGES_PER_TERM - downloaded)
+            results = search_unsplash(term, page=page, per_page=per_page)
+
+            if not results:         
+                break
+
             for img_data in results:
                 url = img_data["urls"]["regular"]
-                filename = f"{term.replace(' ', '_')}_{idx:04}.jpg"
-                save_path = os.path.join(OUTPUT_DIR, filename)
+                file_name = f"{term.replace(' ', '_')}_{idx:04}.jpg"
+                save_path = os.path.join(OUTPUT_DIR, file_name)
                 download_and_resize_image(url, save_path)
                 idx += 1
-        except Exception as e:
-            print(f"⚠️ Failed for term '{term}': {e}")
-        print(f"Completed term '{term}'")
+                downloaded += 1
+
+            page += 1
 
 if __name__ == "__main__":
     main()
