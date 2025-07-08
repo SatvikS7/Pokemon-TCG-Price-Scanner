@@ -23,10 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
-# Ignore dataset images
+# Ignore dataset images and labels
 *.png
 *.jpg
 *.jpeg
+*.txt
 
 # Ignore virtual environment
 pokemon-card-env/
@@ -39,4 +40,6 @@ python_3.11.4_env/
 backend/model/pokemon_card_detector.h5
 notes.txt
 *.traineddata
+*.cache
+*.pt
 

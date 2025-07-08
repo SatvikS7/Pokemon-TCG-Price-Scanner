@@ -24,6 +24,10 @@ body {
   background-color: var(--background-color);
 }
 
+button {
+  background: #facc15
+}
+
 .header {
   width: 100%;
   background: linear-gradient(90deg, #f7d346,  #f62c12);
@@ -35,18 +39,22 @@ body {
   left: 0;
   z-index: 1000;
   margin-bottom: 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }
 
-h1 {
+.header h1 {
   font-size: larger;
   font-weight: 1000;
+  color: black;
 }
 
 .main-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 100px 20px 20px;
+  padding: 200px 20px 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -198,6 +206,7 @@ h1 {
 
 .grid-item img {
   width: 100%;
+  height: auto;
   border-radius: 8px;
   border: 1px solid #ddd;
 }
@@ -242,4 +251,57 @@ h1 {
   padding: 8px;
   background-color: #fff;
   color: #333;
+}
+
+
+
+/*********************************/
+/*   CSS for PhotoDetection      */
+/*********************************/
+
+.photo-upload-container {
+  margin-bottom: 1.5rem;
+}
+
+.dropzone-box {
+  border: 2px dashed #555;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.preview-container {
+  margin-top: 1rem;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 4px;
+}
+
+.remove-button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #ff4d4f;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.error-text {
+  color: red;
+  margin-top: 0.5rem;
+}
+
+.price-container {
+  margin-top: 1rem;
+  text-align: left;
 }

@@ -5,6 +5,7 @@ import fetch from 'node-fetch';
 import FormData from 'form-data';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import { model } from '@tensorflow/tfjs';
 
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
 dotenv.config({ path: envFile });
@@ -45,7 +46,13 @@ app.post('/predict', upload.single('file'), async (req, res) => {
   form.append('file', fs.createReadStream(req.file.path));
 
   try {
-    const response = await fetch(`${MODEL_URL}/predict`, {
+    const incomingDebug = req.query.debug;
+    let modelEndpoint = `${MODEL_URL}/predict`;
+    if (incomingDebug !== undefined) {
+      modelEndpoint += `?debug=${incomingDebug}`;
+    }
+
+    const response = await fetch(modelEndpoint, {
       method: 'POST',
       body: form,
     });

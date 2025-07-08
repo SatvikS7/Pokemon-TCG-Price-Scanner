@@ -66,12 +66,31 @@ def preprocess_ocr_LowRes(region):
     # 2. Enhance contrast (preserves white outlines)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
+
+    mean_brightness = np.mean(enhanced)
+    
+    if mean_brightness < 85:       # Dark region
+        print("Dark region detected")
+        kernel = np.array([[ 0, -1.0,  0 ],
+                           [-1.0, 5.0, -1.0],
+                           [ 0, -1.0,  0 ]])
+    elif mean_brightness > 170:    # Very bright region
+        print("Very bright region detected")
+        kernel = np.array([[ 0, -0.3,  0 ],
+                           [-0.3, 2.6, -0.3],
+                           [ 0, -0.3,  0 ]])
+    else:                          # Medium brightness
+        print("Medium brightness region detected")
+        kernel = np.array([[ 0, -0.5,  0 ],
+                           [-0.5, 3.0, -0.5],
+                           [ 0, -0.5,  0 ]])
+    sharpened = cv2.filter2D(enhanced, -1, kernel)
     
     # 3. Use Otsu's thresholding for automatic level selection
-    _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    _, thresh = cv2.threshold(sharpened, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     
     # 4. Smart inversion (only if background is darker than text)
-    if np.mean(thresh) < 127:
+    if np.mean(thresh) < 54:
         thresh = cv2.bitwise_not(thresh)
     
     # 5. Remove outer black artifacts using contour area filtering
@@ -120,7 +139,6 @@ def crop_card_from_image(image):
 
     contours, _ = cv2.findContours(edges_dialate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
-        print("No contours found — using original image")
         return image, image, gray, blur, edges, edges_dialate, None
 
     min_area = 0.03 * image.shape[0] * image.shape[1]
@@ -136,7 +154,6 @@ def crop_card_from_image(image):
             card_like_contours.append(cnt)
 
     if not card_like_contours:
-        print("No rectangular card-like contours found — using original image")
         return image, image, gray, blur, edges, edges_dialate, None
 
     card_contour = max(card_like_contours, key=cv2.contourArea)
@@ -172,6 +189,9 @@ def encode_img(img, is_gray=False):
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    raw_debug = request.args.get("debug", "false")
+    debug_flag = raw_debug.lower() in ["1", "true", "yes"]
+
     model = get_model()
     
     file = request.files.get("file")
@@ -193,11 +213,12 @@ def predict():
     if card_number is not None:
         card_number_text = ocr_number(card_number)
         if card_number_text == "":
-            card_number_text = "Image Unclear"
-    else:   
-        card_number_text = "Card Not Found"
+            print("OCR failed to read card number")
+    else:
+        print("No card number region detected")   
+        card_number_text = ""
 
-    return jsonify({
+    full_response = {
         "confidence": confidence,
         "annotated_image": encode_img(annotated_image),
         "cropped_image": encode_img(cropped_image),
@@ -207,7 +228,17 @@ def predict():
         "dilated": encode_img(edges_dialate, is_gray=True),
         "card_number": encode_img(card_number) if card_number is not None else None,
         "card_number_text": card_number_text,
-    })
+    }
+
+    if not debug_flag:
+        minimal_response = {
+            "confidence": confidence,
+            "cropped_image": full_response["cropped_image"],
+            "card_number_text": card_number_text,
+        }
+        return jsonify(minimal_response)
+
+    return jsonify(full_response)
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
