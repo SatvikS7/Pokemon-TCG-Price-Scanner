@@ -1,0 +1,16 @@
+Flask>=3.0
+Flask-Cors
+easyocr
+opencv-python
+opencv-python-headless
+numpy
+pandas
+matplotlib
+scikit-learn
+joblib
+Pillow
+tensorflow-cpu
+keras
+requests
+pytesseract
+gunicorn

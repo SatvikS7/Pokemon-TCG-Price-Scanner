@@ -1,0 +1,12 @@
+Flask>=3.0
+Flask-Cors
+opencv-python
+opencv-python-headless
+numpy
+joblib
+Pillow
+tensorflow-cpu
+requests
+gunicorn
+dotenv
+pytessseract
