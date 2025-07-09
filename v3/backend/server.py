@@ -9,27 +9,31 @@ import torch
 import util  
 
 # Load YOLO model and move to GPU if available
-model = YOLO("../models/best_v1.pt")
+model = YOLO("../models/best_v2.pt")
 model.fuse()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-async def handle_connection(websocket, path):
+async def handle_connection(websocket):
     print("Client connected.")
     try:
         async for message in websocket:
             # Assume message is base64-encoded JPEG frame
-            data = base64.b64decode(message)
-            nparr = np.frombuffer(data, np.uint8)
+            image_b64 = json.loads(message)["image"]
+            if image_b64.startswith("data:image"):
+                image_b64 = image_b64.split(",", 1)[1]
+
+            image_bytes = base64.b64decode(image_b64)
+            nparr = np.frombuffer(image_bytes, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
             # Run inference
             match_info = util.recognize_card_from_frame(frame, model, conf=0.85)
-            match_info_m = util.recognize_card_from_frame(frame, model, conf=0.85, mirror=True)
+            match_info_m = util.recognize_card_from_frame(frame, model, conf=0.85, flip=True)
 
-            # choose the match_info with the better score
+            # Choose the match_info with the better score
             if match_info and match_info_m:
-                if match_info['score'] >= match_info_m['score']:
+                if match_info['score'] <= match_info_m['score']:
                     chosen = match_info
                 else:
                     chosen = match_info_m

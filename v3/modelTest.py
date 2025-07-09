@@ -97,11 +97,11 @@ def url_to_cv2(url, target_size=(320, 320)):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--weights", default="best.pt", help="path to model weights")
+    ap.add_argument("--weights", default="models/best_v2.pt", help="path to model weights")
     ap.add_argument("--device",  default="0",      help="CUDA device (0/1) or cpu")
     ap.add_argument("--conf",    type=float, default=0.85, help="confidence threshold")
     ap.add_argument("--imgsz",   type=int,   default=640,  help="inference image size")
-    ap.add_argument("--camera",  type=int,   default=0,    help="webcam index")
+    ap.add_argument("--camera",  type=int,   default=1,    help="webcam index")
     args = ap.parse_args()
 
     model = YOLO(args.weights)

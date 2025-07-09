@@ -8,7 +8,7 @@ from PIL import Image
 import cv2
 import numpy as np
 
-DB_PATH = Path("pokemon_hash_db.sqlite")     
+DB_PATH = Path("database/pokemon_hash_db.sqlite")     
 TABLE   = "card_hashes"                        
 PH_COL, DH_COL = "phash", "dhash"      
 
@@ -101,13 +101,13 @@ def perspective_transform(image: np.ndarray, mask: np.ndarray,
     # uniform canvas
     warped = cv2.resize(warped, (320, 320), interpolation=cv2.INTER_AREA)
 
-    # flip 180 degrees if mirror is True
+    # flip 180 degrees if flip is True
     if flip:
         warped = cv2.flip(warped, -1)
 
     return warped
 
-def recognize_card_from_frame(frame, model, conf=0.85, mirror=False):
+def recognize_card_from_frame(frame, model, conf=0.85, flip=False):
     """
     Takes a frame, runs YOLO-seg inference, extracts card(s), computes hashes,
     and finds the best match in the database.
@@ -115,11 +115,13 @@ def recognize_card_from_frame(frame, model, conf=0.85, mirror=False):
     Returns:
         dict or None: Match information as a dictionary, or None if no match.
     """
+    print("Running updated recognize_card_from_frame")
+
     results = model(frame, imgsz=640, conf=conf)[0]
 
     if results.masks is not None:
         for m in results.masks.data.cpu().numpy():
-            card = perspective_transform(frame, m, mirror=mirror)
+            card = perspective_transform(frame, m, flip=flip)
             if card is not None:
                 phash, dhash = compute_hashes(card)
                 match = find_best_match(phash, dhash)
