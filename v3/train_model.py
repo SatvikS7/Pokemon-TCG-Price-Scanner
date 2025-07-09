@@ -11,6 +11,6 @@ model.train(
     name="yolo11s-seg-custom_v2",
     save_period=10,  # Save every 10 epochs
     save=True,  # Save the model after training
-    project="card_identifier_model_v2",  # Save in the card_identifier directory
+    project="card_identifier",  # Save in the card_identifier directory
     plots=True,
 )
