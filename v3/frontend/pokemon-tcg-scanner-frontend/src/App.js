@@ -10,8 +10,10 @@ function App() {
   useEffect(() => {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.name) {
-        setCardInfo(data);
+      if (Array.isArray(data)) {
+        setCardInfo(data); 
+      } else if (data.name) {
+        setCardInfo([data]); 
       }
     };
   }, []);
@@ -33,14 +35,18 @@ function App() {
     <div>
       <h1>Pokémon Card Detector</h1>
       <Webcam ref={webcamRef} screenshotFormat="image/jpeg" videoConstraints={{
-    facingMode: "user" // "user" = front camera, "environment" = rear camera
-  }}/>
-      {cardInfo && (
+        facingMode: "user" // "user" = front camera, "environment" = rear camera
+      }}/>
+      {cardInfo && cardInfo.length > 0 && (
         <div style={{ marginTop: 20 }}>
-          <h2>{cardInfo.name}</h2>
-          <p>Set ID: {cardInfo.set_id}</p>
-          <p>Score: {cardInfo.score.toFixed(2)}</p>
-          <img src={cardInfo.image_url} alt={cardInfo.name} width="200" />
+          {cardInfo.map((card, idx) => (
+            <div key={idx}>
+              <h2>{card.name}</h2>
+              <p>Set ID: {card.set_id}</p>
+              <p>Score: {card.score.toFixed(2)}</p>
+              <img src={card.image_url} alt={card.name} width="200" />
+            </div>
+          ))}
         </div>
       )}
     </div>

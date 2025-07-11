@@ -118,6 +118,7 @@ def recognize_card_from_frame(frame, model, conf=0.85, flip=False):
     print("Running updated recognize_card_from_frame")
 
     results = model(frame, imgsz=640, conf=conf)[0]
+    matches = []
 
     if results.masks is not None:
         for m in results.masks.data.cpu().numpy():
@@ -127,10 +128,10 @@ def recognize_card_from_frame(frame, model, conf=0.85, flip=False):
                 match = find_best_match(phash, dhash)
                 if match:
                     row, score = match
-                    return {
+                    matches.append({
                         "name": row["name"],
                         "set_id": row["set_id"],
                         "image_url": row["image_url"],
                         "score": score
-                    }
-    return None
+                    })
+    return matches

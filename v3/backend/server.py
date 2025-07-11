@@ -30,18 +30,19 @@ async def handle_connection(websocket):
             # Run inference
             match_info = util.recognize_card_from_frame(frame, model, conf=0.85)
             match_info_m = util.recognize_card_from_frame(frame, model, conf=0.85, flip=True)
-
+            final_matches = []
             # Choose the match_info with the better score
-            if match_info and match_info_m:
-                if match_info['score'] <= match_info_m['score']:
-                    chosen = match_info
+            for i in range(len(match_info)):
+                if match_info[i] and match_info_m[i]:
+                    if match_info[i]['score'] <= match_info_m[i]['score']:
+                        final_matches.append(match_info[i])
+                    else:
+                        final_matches.append(match_info_m[i])
+                elif match_info_m[i]:
+                    final_matches.append(match_info_m[i])
                 else:
-                    chosen = match_info_m
-            elif match_info_m:
-                chosen = match_info_m
-            else: 
-                chosen = match_info
-            await websocket.send(json.dumps(chosen or {"match": None}))
+                    final_matches.append(match_info[i])
+            await websocket.send(json.dumps(final_matches))
     except websockets.exceptions.ConnectionClosed:
         print("Client disconnected.")
 
