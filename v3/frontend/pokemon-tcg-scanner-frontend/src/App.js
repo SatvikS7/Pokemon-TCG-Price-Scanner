@@ -6,28 +6,51 @@ const ws = new WebSocket("ws://localhost:8765/ws"); // Adjust to your server
 function App() {
   const webcamRef = useRef(null);
   const [cardInfo, setCardInfo] = useState(null);
+  const awaitingResponse = useRef(false);
 
   useEffect(() => {
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected");
+    };
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      awaitingResponse.current = false;
+
       if (Array.isArray(data)) {
-        setCardInfo(data); 
+        setCardInfo(data);
       } else if (data.name) {
-        setCardInfo([data]); 
+        setCardInfo([data]);
+      } else {
+        setCardInfo(null); // no match
       }
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    ws.onclose = () => {
+      console.log("🔌 WebSocket disconnected");
     };
   }, []);
 
-  // Send frame every 200ms
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (webcamRef.current) {
+    const sendFrame = () => {
+      if (
+        !awaitingResponse.current &&
+        webcamRef.current &&
+        ws.readyState === WebSocket.OPEN
+      ) {
         const imageSrc = webcamRef.current.getScreenshot();
-        if (imageSrc && ws.readyState === WebSocket.OPEN) {
+        if (imageSrc) {
+          awaitingResponse.current = true;
           ws.send(JSON.stringify({ image: imageSrc }));
         }
       }
-    }, 200);
+    };
+
+    const interval = setInterval(sendFrame, 100); // adjustable (100–300ms)
     return () => clearInterval(interval);
   }, []);
 
