@@ -12,7 +12,8 @@ const ws = new WebSocket("ws://localhost:8765/ws");
 
 function VideoDetection() {
   const webcamRef = useRef<Webcam>(null);
-  const [cardInfo, setCardInfo] = useState<CardInfo[] | null>(null);
+  const [recentDetections, setRecentDetections] = useState<CardInfo[][]>([]);
+  const [topCards, setTopCards] = useState<CardInfo[]>([]);
   const [isCameraActive, setIsCameraActive] = useState(true);
   const awaitingResponse = useRef(false);
 
@@ -23,16 +24,38 @@ function VideoDetection() {
       awaitingResponse.current = false;
 
       if (Array.isArray(data)) {
-        setCardInfo(data);
-      } else if (data.name) {
-        setCardInfo([data]);
-      } else {
-        setCardInfo(null);
+        setRecentDetections((prev) => [...prev, data].slice(-5));
+      } else if (data?.name) {
+        const cardList = [data];
+        setRecentDetections((prev) => [...prev, cardList].slice(-5));
       }
     };
     ws.onerror = (err) => console.error("WebSocket error:", err);
     ws.onclose = () => console.log("🔌 WebSocket disconnected");
   }, []);
+
+  useEffect(() => {
+    if (recentDetections.length === 0) return;
+
+    // Flatten and count most frequent card
+    const allDetections = recentDetections.flat();
+    const freqMap = new Map<string, { card: CardInfo; count: number }>();
+
+    allDetections.forEach((card) => {
+      const key = `${card.name}-${card.set_id}`;
+      if (!freqMap.has(key)) {
+        freqMap.set(key, { card, count: 1 });
+      } else {
+        freqMap.get(key)!.count += 1;
+      }
+    });
+
+    const sorted = [...freqMap.values()].sort((a, b) => b.count - a.count);
+    const topCards = sorted.map((entry) => entry.card);
+
+    setTopCards(topCards);
+  }, [recentDetections]);
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -55,7 +78,8 @@ function VideoDetection() {
 
   const stopCamera = () => {
     setIsCameraActive(false);
-    setCardInfo(null);
+    setRecentDetections([]);
+    setTopCards([]);
     awaitingResponse.current = false;
   };
 
@@ -86,17 +110,15 @@ function VideoDetection() {
               </button>
             </div>
         </div>
-        <div className="confidence-section">
-          <div className="prediction-info">
-            {cardInfo?.map((card, idx) => (
-              <div key={idx}>
-                <h2>{card.name}</h2>
-                <p>Set ID: {card.set_id}</p>
-                <p>Score: {card.score.toFixed(2)}</p>
-                <img src={card.image_url} alt={card.name} width="200" />
-              </div>
-            ))}
-          </div>
+        <div className="processing-grid">
+          {topCards?.map((card, idx) => (
+            <div key={idx} className="grid-item">
+              <h2>{card.name}</h2>
+              <p>Set ID: {card.set_id}</p>
+              <p>Score: {card.score.toFixed(2)}</p>
+              <img src={card.image_url} alt={card.name} width="200" />
+            </div>
+          ))}
         </div>
       </main>
     </div>
