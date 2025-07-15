@@ -1,32 +1,40 @@
-import React, { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import Webcam from "react-webcam";
+
+// TypeScript interface for card match info
+interface CardMatch {
+  name: string;
+  set_id: string;
+  image_url: string;
+  score: number;
+}
 
 const ws = new WebSocket("ws://localhost:8765/ws"); // Adjust to your server
 
-function App() {
-  const webcamRef = useRef(null);
-  const [cardInfo, setCardInfo] = useState(null);
-  const awaitingResponse = useRef(false);
+function App(): JSX.Element {
+  const webcamRef = useRef<Webcam>(null);
+  const [cardInfo, setCardInfo] = useState<CardMatch[] | null>(null);
+  const awaitingResponse = useRef<boolean>(false);
 
   useEffect(() => {
     ws.onopen = () => {
       console.log("✅ WebSocket connected");
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
       awaitingResponse.current = false;
 
       if (Array.isArray(data)) {
-        setCardInfo(data);
+        setCardInfo(data as CardMatch[]);
       } else if (data.name) {
-        setCardInfo([data]);
+        setCardInfo([data as CardMatch]);
       } else {
         setCardInfo(null); // no match
       }
     };
 
-    ws.onerror = (err) => {
+    ws.onerror = (err: Event) => {
       console.error("WebSocket error:", err);
     };
 
@@ -50,16 +58,18 @@ function App() {
       }
     };
 
-    const interval = setInterval(sendFrame, 100); // adjustable (100–300ms)
+    const interval = setInterval(sendFrame, 100);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div>
       <h1>Pokémon Card Detector</h1>
-      <Webcam ref={webcamRef} screenshotFormat="image/jpeg" videoConstraints={{
-        facingMode: "user" // "user" = front camera, "environment" = rear camera
-      }}/>
+      <Webcam
+        ref={webcamRef}
+        screenshotFormat="image/jpeg"
+        videoConstraints={{ facingMode: "user" }}
+      />
       {cardInfo && cardInfo.length > 0 && (
         <div style={{ marginTop: 20 }}>
           {cardInfo.map((card, idx) => (

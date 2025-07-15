@@ -4,5 +4,10 @@
     "@tensorflow/tfjs": "^4.22.0",
     "react-webcam": "^7.2.0",
     "tesseract.js": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "typescript": "^5.8.3"
   }
 }
