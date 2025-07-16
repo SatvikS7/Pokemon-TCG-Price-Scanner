@@ -1,5 +1,0 @@
-train: C:\Users\satvi\Desktop\Personal_Projects\pokemon-price-checker-v2\v3\train
-val:  C:\Users\satvi\Desktop\Personal_Projects\pokemon-price-checker-v2\v3\val
-
-nc: 1
-names: ["card"]
