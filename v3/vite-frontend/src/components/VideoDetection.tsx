@@ -52,9 +52,12 @@ function VideoDetection() {
     });
 
     const sorted = [...freqMap.values()].sort((a, b) => b.count - a.count);
-    const topCards = sorted.map((entry) => entry.card);
+    const maxCardsInFrame = Math.max(...recentDetections.map(frame => frame.length));
 
-    setTopCards(topCards);
+    // Slice top N cards
+    const topN = sorted.slice(0, maxCardsInFrame).map((entry) => entry.card);
+
+    setTopCards(topN);
   }, [recentDetections]);
 
 
@@ -76,6 +79,17 @@ function VideoDetection() {
 
     return () => clearInterval(interval);
   }, [isCameraActive]);
+
+  // debugging logs
+  /*
+  useEffect(() => {
+    console.log("Top cards updated:", topCards);
+  }, [topCards]);
+
+  useEffect(() => {
+    console.log("recentDetections updated:", recentDetections);
+  }, [recentDetections]);
+  */
 
   useEffect(() => {
     if (topCards.length === 0) return;
@@ -140,6 +154,7 @@ function VideoDetection() {
               </button>
             </div>
         </div>
+        <h1>Recent Detections</h1>
         <div className="processing-grid">
           {topCards.map((card, idx) => {
             const key = `${card.name}-${card.set_id}`;
