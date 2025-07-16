@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 from ultralytics import YOLO
 import torch
-import util  
+import utils.util as util  
 
 # Load YOLO model and move to GPU if available
 model = YOLO("../models/best_v2.pt")

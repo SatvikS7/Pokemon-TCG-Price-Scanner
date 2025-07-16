@@ -14,6 +14,7 @@ function VideoDetection() {
   const webcamRef = useRef<Webcam>(null);
   const [recentDetections, setRecentDetections] = useState<CardInfo[][]>([]);
   const [topCards, setTopCards] = useState<CardInfo[]>([]);
+  const [cardPrices, setCardPrices] = useState<Record<string, number>>({});  
   const [isCameraActive, setIsCameraActive] = useState(true);
   const awaitingResponse = useRef(false);
 
@@ -76,6 +77,35 @@ function VideoDetection() {
     return () => clearInterval(interval);
   }, [isCameraActive]);
 
+  useEffect(() => {
+    if (topCards.length === 0) return;
+
+    const payload = topCards.map((card) => ({
+      name: card.name,
+      set_id: card.set_id,
+    }));
+
+    fetch("http://localhost:8000/price/batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json())
+      .then((prices) => {
+        const newPrices: Record<string, number> = {};
+        prices.forEach((card: { name: string; set_id: string; price: number }) => {
+          const key = `${card.name}-${card.set_id}`;
+          newPrices[key] = card.price;
+        });
+        setCardPrices(newPrices);
+      })
+      .catch((err) => {
+        console.error("Price fetch error:", err);
+      });
+  }, [topCards]);
+
   const stopCamera = () => {
     setIsCameraActive(false);
     setRecentDetections([]);
@@ -111,14 +141,23 @@ function VideoDetection() {
             </div>
         </div>
         <div className="processing-grid">
-          {topCards?.map((card, idx) => (
-            <div key={idx} className="grid-item">
-              <h2>{card.name}</h2>
-              <p>Set ID: {card.set_id}</p>
-              <p>Score: {card.score.toFixed(2)}</p>
-              <img src={card.image_url} alt={card.name} width="200" />
-            </div>
-          ))}
+          {topCards.map((card, idx) => {
+            const key = `${card.name}-${card.set_id}`;
+            const price = cardPrices[key];
+            return (
+              <div key={idx}>
+                <h2>{card.name}</h2>
+                <p>Set ID: {card.set_id}</p>
+                <p>Score: {card.score.toFixed(2)}</p>
+                {price !== undefined ? (
+                  <p>Price: ${price.toFixed(2)}</p>
+                ) : (
+                  <p>Loading price...</p>
+                )}
+                <img src={card.image_url} alt={card.name} width='200'/>
+              </div>
+            );
+          })}
         </div>
       </main>
     </div>
