@@ -54,7 +54,7 @@ function VideoDetection() {
         freqMap.get(key)!.count += 1;
       }
     });
-    
+
     const filtered = [...freqMap.values()].filter(({ count }) => count >= 3);
     const sorted = filtered.sort((a, b) => b.count - a.count);
     const maxCardsInFrame = Math.max(...recentDetections.map(frame => frame.length));
@@ -172,6 +172,11 @@ function VideoDetection() {
     setIsCameraActive(false);
     setRecentDetections([]);
     setTopCards([]);
+    setCardPrices({});
+    seenCards.current.clear();
+    confirmedCards.current.clear();
+    setTotalPrice(0);
+    frameIndex.current = 0;
     awaitingResponse.current = false;
   };
 

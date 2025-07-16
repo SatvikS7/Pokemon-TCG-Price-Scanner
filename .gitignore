@@ -29,15 +29,10 @@ dist-ssr
 *.jpeg
 *.txt
 
-# Ignore virtual environment
-pokemon-card-env/
-python_3.11.4_env/
-
 # Extra
 *.exe
 *.env
 *.h5
-backend/model/pokemon_card_detector.h5
 notes.txt
 *.traineddata
 *.cache
