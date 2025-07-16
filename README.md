@@ -10,7 +10,7 @@ Real-time webcam-based Pokémon card detection with live price lookups using TCG
 - FastAPI server for efficient batch price queries
 - Image hashing for robust card matching
 
-# Demo
+# Demo + How it works
 The demo showcased below highlights the core card recognition and matching functionality implemented entirely with Python and OpenCV. Each incoming frame is analyzed in real time by a segmentation model to determine whether any Pokémon cards are present. When detected, the model returns a bounding box, segmentation mask, and confidence score, all of which are visually overlaid on the original frame to aid interpretability.
 
 Once a card is confirmed in the frame, OpenCV is used to extract and isolate the card from the background using the mask. To ensure consistency during downstream matching, a perspective transform is applied to correct for any skew or rotation in the camera's viewpoint—effectively normalizing the card’s orientation. These rectified card views are rendered live in separate display windows titled "Card #", allowing visual inspection of the transformed inputs.
@@ -34,3 +34,36 @@ To ensure high throughput and low latency, several performance features are inte
 Together, these design choices create a robust, real-time application that remains performant even when processing a continuous stream of data under fluctuating conditions.
 
 ![Website_Demo](media/Website_Demo.gif)
+
+# Tech Stack
+- Frontend: React, TypeScript, react-webcam, WebSocket
+- Backend: Python, FastAPI, WebSockets, OpenCV
+- ML Model: YOLOv11-seg (Ultralytics)
+- APIs: PokemonTCG
+
+# Folder Structure
+backend/
+  ├── server.py            # WebSocket for frame processing
+  ├── api.py               # FastAPI for price lookup
+  └── utils/               # Utility functions
+      ├── card_handler.py  # Handles processing from frame to matched cards 
+      └── price_cache.py   # Handles TTLCache and does api calls to PokémonTCG
+frontend/
+  └── src/            
+      ├── App.tsx          # Contains shared elements for all pages
+      ├── app.css          # All stylings for the website
+      ├── main.tsx         # Root of website
+      └── Componenets/
+          ├── LandingPage.tsx     # Landing page of the website to navigate to other pages
+          ├── PhotoDetection.tsx  # TODO, future feature to upload photos of cards
+          └── VideoDetection.tsx  # Contains all logic for live scanning + api calls to backend
+
+# How to use
+TODO
+
+# Future Improvements
+This service is currently under active development, with plans for deployment to a production environment in the near future. Ongoing improvements include more robust tracking of the cumulative card price total, as the current implementation may yield inconsistent results (as of 7/16). Additionally, a user authentication system is planned, enabling individual accounts where users can maintain a history of scanned cards and associated price data.
+
+A longer-term objective is the integration of a PSA grade prediction system. PSA grading assigns a numerical score from 1 to 10 to evaluate a card's condition, with 10 representing a gem mint state. These grades significantly influence a card's market value. Giving users an option to estimate the grade of a card before paying money to send it to a grading service is a powerful tool that can save money for all Pokémon collectors.
+
+# License
