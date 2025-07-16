@@ -11,4 +11,4 @@ Real-time webcam-based Pokémon card detection with live price lookups using TCG
 - Image hashing for robust card matching
 
 # Demo
-![](media/Card_Identification_Test.mp4)
+![Demo](media/Card_Identification_Test.gif)
