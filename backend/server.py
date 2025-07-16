@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 from ultralytics import YOLO
 import torch
-import utils.util as util  
+import utils.card_handler as card_handler  
 
 # Load YOLO model and move to GPU if available
 model = YOLO("../models/best_v2.pt")
@@ -28,8 +28,8 @@ async def handle_connection(websocket):
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
             # Run inference
-            match_info = util.recognize_card_from_frame(frame, model, conf=0.85)
-            match_info_m = util.recognize_card_from_frame(frame, model, conf=0.85, flip=True)
+            match_info = card_handler.recognize_card_from_frame(frame, model, conf=0.85)
+            match_info_m = card_handler.recognize_card_from_frame(frame, model, conf=0.85, flip=True)
             final_matches = []
             # Choose the match_info with the better score
             for i in range(len(match_info)):
