@@ -17,7 +17,7 @@ function VideoDetection() {
   const [cardPrices, setCardPrices] = useState<Record<string, number>>({});  
   const [isCameraActive, setIsCameraActive] = useState(true);
   const awaitingResponse = useRef(false);
-  const seenCards = useRef<Map<string, { count: number; lastSeen: number }>>(new Map());
+  const seenCards = useRef<Map<string, { count: number; lastFrame: number }>>(new Map());
   const confirmedCards = useRef<Set<string>>(new Set());
   const [totalPrice, setTotalPrice] = useState(0);
   const frameIndex = useRef(0);
@@ -78,7 +78,7 @@ function VideoDetection() {
           ws.send(JSON.stringify({ image: imageSrc }));
         }
       }
-    }, 150);
+    }, 100);
 
     return () => clearInterval(interval);
   }, [isCameraActive]);
@@ -128,31 +128,30 @@ function VideoDetection() {
 
     frameIndex.current += 1;
 
-    const now = frameIndex.current;
+    const currFrame = frameIndex.current;
     const minConfirmFrames = 3;       // How many frames before a card is "confirmed"
     const forgetThreshold = 40;       // Frames after which a missing card can be re-counted
 
     for (const card of topCards) {
       const key = `${card.name}-${card.set_id}`;
-
       const record = seenCards.current.get(key);
+      const price = cardPrices[key];
 
-      if (record) {
-        // Already seen before
+      // Skip if no price available
+      if (price === undefined) {
+        continue;
+      }
+
+      if (record) {        // Already seen before
         record.count += 1;
-        record.lastSeen = now;
-      } else {
-        // First time seeing this card
-        seenCards.current.set(key, { count: 1, lastSeen: now });
+        record.lastFrame = currFrame;
+      } else {        // First time seeing this card
+        seenCards.current.set(key, { count: 1, lastFrame: currFrame });
       }
 
       // Promote to confirmed if seen enough times and not already counted
-      if (
-        !confirmedCards.current.has(key) &&
-        seenCards.current.get(key)!.count >= minConfirmFrames
-      ) {
+      if (!confirmedCards.current.has(key) && seenCards.current.get(key)!.count >= minConfirmFrames) {
         confirmedCards.current.add(key);
-        const price = cardPrices[key];
         if (price) {
           setTotalPrice((prev) => prev + price);
         }
@@ -161,7 +160,7 @@ function VideoDetection() {
 
     // Cleanup logic: allow cards to be re-counted after being gone
     for (const [key, value] of seenCards.current.entries()) {
-      if (now - value.lastSeen > forgetThreshold) {
+      if (currFrame - value.lastFrame > forgetThreshold) {
         seenCards.current.delete(key);
         confirmedCards.current.delete(key);
       }
@@ -209,6 +208,7 @@ function VideoDetection() {
         </div>
         <h1>Recent Detections</h1>
         <h2>Total Price: ${totalPrice.toFixed(2)}</h2>
+        <h2>${JSON.stringify(cardPrices)}</h2>
         <div className="processing-grid">
           {topCards.map((card, idx) => {
             const key = `${card.name}-${card.set_id}`;
