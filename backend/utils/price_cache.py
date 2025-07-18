@@ -4,6 +4,13 @@ import os
 
 # Cache: max 50 items, expire after 1 hour
 cache = TTLCache(maxsize=50, ttl=3600)
+pricePriority = [
+  "normal",
+  "1stEditionNormal",
+  "reverseHolofoil",
+  "holofoil",
+  "1stEditionHolofoil",
+]
 
 def get_card_price(key: str, set_id: str):
     if key in cache:
@@ -20,7 +27,11 @@ def fetch_price_from_tcgplayer(set_id):
     if response.status_code == 200:
         data = response.json()['data'][0]
         # Extract price from the response, saved in data.tcgplayer.prices.normal.market
-        if "tcgplayer" in data and "prices" in data["tcgplayer"] and "normal" in data["tcgplayer"]["prices"]:
-            return data["tcgplayer"]["prices"]["normal"].get("market", 0.0)
+        if "tcgplayer" in data and "prices" in data["tcgplayer"]:
+            prices = data["tcgplayer"]["prices"]
+            # Check for pricing options in priority order
+            for price_type in pricePriority:
+                if price_type in prices and "market" in prices[price_type]:
+                    return prices[price_type]["market"]
         return 0.0
     return 0.0
