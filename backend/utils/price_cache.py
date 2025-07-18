@@ -1,6 +1,14 @@
 from cachetools import TTLCache
 import requests
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+POKEMONTCG_API_KEY = os.getenv('POKEMONTCG_API_KEY')
+
+headers = {
+    'X-Api-Key': POKEMONTCG_API_KEY
+}
 
 # Cache: max 50 items, expire after 1 hour
 cache = TTLCache(maxsize=50, ttl=3600)
@@ -23,7 +31,7 @@ def get_card_price(key: str, set_id: str):
 
 def fetch_price_from_tcgplayer(set_id):
     url = f"https://api.pokemontcg.io/v2/cards?q=id:{set_id}"
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()['data'][0]
         # Extract price from the response, saved in data.tcgplayer.prices.normal.market

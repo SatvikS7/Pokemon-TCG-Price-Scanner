@@ -208,7 +208,6 @@ function VideoDetection() {
         </div>
         <h1>Recent Detections</h1>
         <h2>Total Price: ${totalPrice.toFixed(2)}</h2>
-        <h2>${JSON.stringify(cardPrices)}</h2>
         <div className="processing-grid">
           {topCards.map((card, idx) => {
             const key = `${card.name}-${card.set_id}`;
