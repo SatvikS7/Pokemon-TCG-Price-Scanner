@@ -40,4 +40,5 @@ notes.txt
 *.pt
 *.pyc
 !backend/database/best_v2.pt
+!backend/requirements.txt
 

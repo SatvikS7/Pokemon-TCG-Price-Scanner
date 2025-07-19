@@ -1,0 +1,11 @@
+cachetools==6.1.0
+fastapi==0.116.1
+ImageHash==4.3.2
+numpy==2.3.1
+opencv_python==4.11.0.86
+opencv_python_headless==4.11.0.86
+Pillow==11.3.0
+pydantic==2.11.7
+python-dotenv==1.1.1
+Requests==2.32.4
+websockets==15.0.1
