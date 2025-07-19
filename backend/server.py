@@ -24,7 +24,6 @@ async def handle_connection(websocket):
     logging.info("Client connected.")
     try:
         async for message in websocket:
-            # Assume message is base64-encoded JPEG frame
             image_b64 = json.loads(message)["image"]
             if image_b64.startswith("data:image"):
                 image_b64 = image_b64.split(",", 1)[1]
@@ -37,6 +36,7 @@ async def handle_connection(websocket):
             match_info = card_handler.recognize_card_from_frame(frame, model, conf=0.85)
             match_info_m = card_handler.recognize_card_from_frame(frame, model, conf=0.85, flip=True)
             final_matches = []
+            
             # Choose the match_info with the better score
             for i in range(len(match_info)):
                 if match_info[i] and match_info_m[i]:
