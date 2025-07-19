@@ -7,15 +7,21 @@ import cv2
 from ultralytics import YOLO
 import torch
 import utils.card_handler as card_handler  
+import logging
+import os
 
 # Load YOLO model and move to GPU if available
-model = YOLO("../models/best_v2.pt")
+model = YOLO("database/best_v2.pt")
 model.fuse()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
+logging.basicConfig(level=logging.INFO)
+
+port = int(os.getenv("PORT", 8765))
+
 async def handle_connection(websocket):
-    print("Client connected.")
+    logging.info("Client connected.")
     try:
         async for message in websocket:
             # Assume message is base64-encoded JPEG frame
@@ -47,9 +53,9 @@ async def handle_connection(websocket):
         print("Client disconnected.")
 
 async def main():
-    async with websockets.serve(handle_connection, "0.0.0.0", 8765):
-        print("WebSocket server running on ws://0.0.0.0:8765")
-        await asyncio.Future()  
+    async with websockets.serve(handle_connection, "0.0.0.0", port):
+        logging.info(f"WebSocket server running on ws://0.0.0.0:{port}")
+        await asyncio.Future()
 
 
 if __name__ == "__main__":

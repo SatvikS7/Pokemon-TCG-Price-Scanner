@@ -7,8 +7,10 @@ interface CardInfo {
   score: number;
   image_url: string;
 }
+const API_BASE = import.meta.env.VITE_API_URL;
+const WS_URL = import.meta.env.VITE_WS_URL;
 
-const ws = new WebSocket("ws://localhost:8765/ws");
+const ws = new WebSocket(WS_URL)
 
 function VideoDetection() {
   const webcamRef = useRef<Webcam>(null);
@@ -102,7 +104,7 @@ function VideoDetection() {
       set_id: card.set_id,
     }));
 
-    fetch("http://localhost:8000/price/batch", {
+    fetch(`${API_BASE}/price/batch`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: pokemontcg-api
+    runtime: python
+    rootDir: backend
+    buildCommand: ""
+    startCommand: uvicorn api:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: POKEMONTCG_API_KEY
+        value: a2fc0c17-00e1-4b6e-b57b-436b454ad4b6
+
+  - type: worker
+    name: pokemontcg-server
+    runtime: python
+    rootDir: backend
+    buildCommand: ""
+    startCommand: python server.py
+    envVars:
+      - key: POKEMONTCG_API_KEY
+        value: a2fc0c17-00e1-4b6e-b57b-436b454ad4b6
+
+  - type: web
+    name: pokemontcg-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
