@@ -18,7 +18,7 @@ model.to(device)
 
 logging.basicConfig(level=logging.INFO)
 
-port = int(os.getenv("PORT", 8765))
+port = int(os.getenv("PORT", 10000))
 
 async def handle_connection(websocket):
     logging.info("Client connected.")
@@ -53,9 +53,12 @@ async def handle_connection(websocket):
         logging.info("Client disconnected.")
 
 async def process_request(path, request_headers):
-    method = request_headers.get("Method")
-    if method != "GET":
-        return (400, [], b"WebSocket server only accepts GET requests")
+    if request_headers.get("Upgrade", "").lower() != "websocket":
+        if request_headers.get("Method", "").upper() == "HEAD":
+            return (200, [], b"OK")
+        return (400, [], b"WebSocket server only accepts WebSocket connections")
+    return None 
+
 
 async def main():
     async with websockets.serve(handle_connection, "0.0.0.0", port, process_request=process_request):
