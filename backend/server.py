@@ -36,7 +36,7 @@ async def handle_connection(websocket):
             match_info = card_handler.recognize_card_from_frame(frame, model, conf=0.85)
             match_info_m = card_handler.recognize_card_from_frame(frame, model, conf=0.85, flip=True)
             final_matches = []
-            
+
             # Choose the match_info with the better score
             for i in range(len(match_info)):
                 if match_info[i] and match_info_m[i]:
@@ -50,10 +50,15 @@ async def handle_connection(websocket):
                     final_matches.append(match_info[i])
             await websocket.send(json.dumps(final_matches))
     except websockets.exceptions.ConnectionClosed:
-        print("Client disconnected.")
+        logging.info("Client disconnected.")
+
+async def process_request(path, request_headers):
+    method = request_headers.get("Method")
+    if method != "GET":
+        return (400, [], b"WebSocket server only accepts GET requests")
 
 async def main():
-    async with websockets.serve(handle_connection, "0.0.0.0", port):
+    async with websockets.serve(handle_connection, "0.0.0.0", port, process_request=process_request):
         logging.info(f"WebSocket server running on ws://0.0.0.0:{port}")
         await asyncio.Future()
 
