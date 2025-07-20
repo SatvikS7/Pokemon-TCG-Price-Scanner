@@ -13,7 +13,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173",
-                   "https://pokeprice-frontend.onrender.com"],  # or ["*"] for dev
+                   "https://pokemon-tcg-price-scanner-1.onrender.com"],  # or ["*"] for dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
