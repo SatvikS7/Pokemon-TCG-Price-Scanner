@@ -8,9 +8,12 @@ from PIL import Image
 import cv2
 import numpy as np
 
-DB_PATH = Path("../database/pokemon_hash_db.sqlite")     
+DB_PATH = Path("database/pokemon_hash_db.sqlite")     
 TABLE   = "card_hashes"                        
-PH_COL, DH_COL = "phash", "dhash"      
+PH_COL, DH_COL = "phash", "dhash"
+
+print("DEBUG: Database path resolved to:", DB_PATH.resolve())
+print("DEBUG: Database file exists:", DB_PATH.exists())
 
 def bgr_to_pil(bgr: np.ndarray) -> Image.Image:
     """Convert OpenCV BGR image to a PIL RGB image."""

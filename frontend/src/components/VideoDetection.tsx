@@ -8,9 +8,8 @@ interface CardInfo {
   image_url: string;
 }
 const API_BASE = import.meta.env.VITE_API_URL;
-const WS_URL = import.meta.env.VITE_WS_URL;
 
-const ws = new WebSocket(WS_URL)
+const ws = new WebSocket(API_BASE+"ws");
 
 function VideoDetection() {
   const webcamRef = useRef<Webcam>(null);
@@ -25,6 +24,7 @@ function VideoDetection() {
   const frameIndex = useRef(0);
 
   useEffect(() => {
+    console.log(API_BASE+"ws");
     ws.onopen = () => console.log("✅ WebSocket connected");
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -104,7 +104,7 @@ function VideoDetection() {
       set_id: card.set_id,
     }));
 
-    fetch(`${API_BASE}/price/batch`, {
+    fetch(`${API_BASE}price/batch`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
