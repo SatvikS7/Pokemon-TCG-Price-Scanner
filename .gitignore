@@ -14,7 +14,7 @@ dist-ssr
 
 # Editor directories and files
 .vscode/*
-model_creation/
+YOLO_model/
 !.vscode/extensions.json
 .idea
 .DS_Store
