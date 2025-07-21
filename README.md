@@ -65,9 +65,7 @@ frontend/<br>
 TODO
 
 # Future Improvements
-This service is currently under active development, with plans for deployment to a production environment in the near future. Ongoing improvements include more robust tracking of the cumulative card price total, as the current implementation may yield inconsistent results (as of 7/16). Additionally, a user authentication system is planned, enabling individual accounts where users can maintain a history of scanned cards and associated price data.
-
-A longer-term objective is the integration of a PSA grade prediction system. PSA grading assigns a numerical score from 1 to 10 to evaluate a card's condition, with 10 representing a gem mint state. These grades significantly influence a card's market value. Giving users an option to estimate the grade of a card before paying money to send it to a grading service is a powerful tool that can save money for all Pokémon collectors.
+In the future, I plan to implement a user authentication system that allows individual accounts, enabling users to maintain a history of scanned cards and associated price data. A longer-term objective is the integration of a PSA grade prediction system. PSA grading assigns a numerical score from 1 to 10 to evaluate a card's condition, with 10 representing a gem mint state. These grades significantly influence a card's market value. Giving users an option to estimate the grade of a card before paying money to send it to a grading service is a powerful tool that can save money for all Pokémon collectors.
 
 # License
 MIT License
