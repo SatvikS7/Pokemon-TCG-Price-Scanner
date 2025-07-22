@@ -55,7 +55,6 @@ button {
   flex-direction: column;
   align-items: center;
   padding: 200px 20px 20px;
-  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -139,16 +138,16 @@ button {
 
 /* Optional hover effect */
 .vid-button:hover {
-  background-color: #8d7309; /* darker blue */
+  background-color: #8d7309; 
 }
 
-.confidence-section {
-  max-width: 800px;
+.card-history-section {
+  width: 70%;
   margin: 20px auto;
   text-align: center;
 }
 
-.confidence-scroller {
+.card-history-scroller {
   display: flex;
   overflow-x: auto;
   gap: 12px;
@@ -159,14 +158,15 @@ button {
   scrollbar-width: thin;
 }
 
-.confidence-item {
-  background-color: #bfdbfe; /* blue-100 */
-  color: #1e3a8a; /* blue-900 */
+.card-history-item {
   padding: 8px 16px;
   border-radius: 8px;
   min-width: 50px;
   text-align: center;
   flex: 0 0 auto;
+}
+.card-history-item:hover {
+  background-color: #8b190a;
 }
 
 .prediction-info {

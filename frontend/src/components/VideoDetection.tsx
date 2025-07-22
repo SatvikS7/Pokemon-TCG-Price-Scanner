@@ -22,6 +22,7 @@ function VideoDetection() {
   const confirmedCards = useRef<Set<string>>(new Set());
   const [totalPrice, setTotalPrice] = useState(0);
   const frameIndex = useRef(0);
+  const [cardHistory, setCardHistory] = useState<CardInfo[]>([]);
 
   useEffect(() => {
     console.log(API_BASE+"ws");
@@ -156,6 +157,12 @@ function VideoDetection() {
         confirmedCards.current.add(key);
         if (price) {
           setTotalPrice((prev) => prev + price);
+          // limit card history to a max of 10 entries
+          if (cardHistory.length >= 10) {
+            setCardHistory((prev) => [...prev.slice(1), { ...card, price }]);
+          } else {
+            setCardHistory((prev) => [...prev, { ...card, price }]);
+          }
         }
       }
     }
@@ -210,6 +217,18 @@ function VideoDetection() {
         </div>
         <h1>Recent Detections</h1>
         <h2>Total Price: ${totalPrice.toFixed(2)}</h2>
+        <div className="card-history-section">
+          {/* Rolling Confidence Buffer */}
+          {cardHistory.length > 0 && (
+            <div className="card-history-scroller">
+              {cardHistory.map((card, index) => (
+                <div key={index} className="card-history-item">
+                  {card.image_url && <img src={card.image_url} alt={card.name} width='200' />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="processing-grid">
           {topCards.map((card, idx) => {
             const key = `${card.name}-${card.set_id}`;
@@ -217,7 +236,6 @@ function VideoDetection() {
             return (
               <div key={idx}>
                 <h2>{card.name}</h2>
-                <p>Set ID: {card.set_id}</p>
                 <p>Score: {card.score.toFixed(2)}</p>
                 {price !== undefined ? (
                   <p>Price: ${price.toFixed(2)}</p>

@@ -31,8 +31,6 @@ model.fuse()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-
-
 class CardRequest(BaseModel):
     name: str
     set_id: str
