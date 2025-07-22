@@ -130,6 +130,7 @@ def recognize_card_from_frame(frame, model, conf=0.85, flip=False):
                         "name": row["name"],
                         "set_id": row["set_id"],
                         "image_url": row["image_url"],
-                        "score": score
+                        "score": score,
+                        "price": 0.0
                     })
     return matches

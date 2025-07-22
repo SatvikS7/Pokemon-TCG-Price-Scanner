@@ -6,6 +6,7 @@ interface CardInfo {
   set_id: string;
   score: number;
   image_url: string;
+  price: number;
 }
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -22,7 +23,17 @@ function VideoDetection() {
   const confirmedCards = useRef<Set<string>>(new Set());
   const [totalPrice, setTotalPrice] = useState(0);
   const frameIndex = useRef(0);
+  // card history is a dictionary of card info with price
   const [cardHistory, setCardHistory] = useState<CardInfo[]>([]);
+
+  const handleRemoveCard = (index: number) => {
+    const cardToRemove = cardHistory[index];
+    if (cardToRemove?.price) {
+      setTotalPrice((prevTotal) => prevTotal - cardToRemove.price);
+    }
+    setCardHistory((prev) => prev.filter((_, i) => i !== index));
+  };
+
 
   useEffect(() => {
     console.log(API_BASE+"ws");
@@ -158,10 +169,11 @@ function VideoDetection() {
         if (price) {
           setTotalPrice((prev) => prev + price);
           // limit card history to a max of 10 entries
+          card.price = price; // Add price to card for history
           if (cardHistory.length >= 10) {
-            setCardHistory((prev) => [...prev.slice(1), { ...card, price }]);
+            setCardHistory((prev) => [...prev.slice(1), { ...card}]);
           } else {
-            setCardHistory((prev) => [...prev, { ...card, price }]);
+            setCardHistory((prev) => [...prev, { ...card}]);
           }
         }
       }
@@ -218,11 +230,14 @@ function VideoDetection() {
         <h1>Recent Detections</h1>
         <h2>Total Price: ${totalPrice.toFixed(2)}</h2>
         <div className="card-history-section">
-          {/* Rolling Confidence Buffer */}
           {cardHistory.length > 0 && (
             <div className="card-history-scroller">
               {cardHistory.map((card, index) => (
-                <div key={index} className="card-history-item">
+                <div key={index} className="card-history-item" 
+                  onClick={() => handleRemoveCard(index)} 
+                  style={{ cursor: 'pointer' }}
+                  title="Click to remove card"
+                >
                   {card.image_url && <img src={card.image_url} alt={card.name} width='200' />}
                 </div>
               ))}
