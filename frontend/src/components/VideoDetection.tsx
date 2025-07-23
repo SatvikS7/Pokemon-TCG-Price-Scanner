@@ -23,8 +23,8 @@ function VideoDetection() {
   const confirmedCards = useRef<Set<string>>(new Set());
   const [totalPrice, setTotalPrice] = useState(0);
   const frameIndex = useRef(0);
-  // card history is a dictionary of card info with price
   const [cardHistory, setCardHistory] = useState<CardInfo[]>([]);
+  
 
   const handleRemoveCard = (index: number) => {
     const cardToRemove = cardHistory[index];
@@ -73,8 +73,12 @@ function VideoDetection() {
     const sorted = filtered.sort((a, b) => b.count - a.count);
     const maxCardsInFrame = Math.max(...recentDetections.map(frame => frame.length));
     const topN = sorted.slice(0, maxCardsInFrame).map((entry) => entry.card);
-
-    setTopCards(topN);
+    setTopCards(prev => {
+      const same =
+        prev.length === topN.length &&
+        prev.every((card, i) => card.name === topN[i].name && card.set_id === topN[i].set_id);
+      return same ? prev : topN;
+    });
   }, [recentDetections]);
 
 
@@ -130,6 +134,7 @@ function VideoDetection() {
           const key = `${card.name}-${card.set_id}`;
           newPrices[key] = card.price;
         });
+        console.log("Fetched prices:", newPrices);
         setCardPrices(newPrices);
       })
       .catch((err) => {
@@ -143,7 +148,7 @@ function VideoDetection() {
     frameIndex.current += 1;
 
     const currFrame = frameIndex.current;
-    const minConfirmFrames = 3;       // How many frames before a card is "confirmed"
+    const minConfirmFrames = 1;       // How many frames before a card is "confirmed"
     const forgetThreshold = 40;       // Frames after which a missing card can be re-counted
 
     for (const card of topCards) {

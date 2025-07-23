@@ -38,7 +38,7 @@ def get_card_price(key: str, set_id: str):
 def fetch_price_from_tcgplayer(set_id):
     url = f"https://api.pokemontcg.io/v2/cards?q=id:{set_id}"
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, timeout=20)
         if response.status_code == 200:
             data = response.json()['data'][0]
             if not data:

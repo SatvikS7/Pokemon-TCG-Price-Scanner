@@ -115,7 +115,7 @@ def recognize_card_from_frame(frame, model, conf=0.85, flip=False):
     Returns:
         dict or None: Match information as a dictionary, or None if no match.
     """
-    results = model(frame, imgsz=640, conf=conf)[0]
+    results = model(frame, imgsz=640, conf=conf, verbose=False)[0]
     matches = []
 
     if results.masks is not None:
