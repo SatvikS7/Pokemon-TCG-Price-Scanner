@@ -1,6 +1,8 @@
 # Pokemon TCG Price Scanner
 Real-time webcam-based Pokémon card detection with live price lookups using TCGPlayer. <br>
-The site is live at [THIS LINK](https://pokemon-tcg-price-scanner-1.onrender.com). Note that this is served on Render's free plan, so there is a lack of compute power for the service and is essentially unusable.
+The site is live at [THIS LINK](https://pokemon-tcg-price-scanner-1.onrender.com). Note that this is served on Render's free plan, so there is a lack of compute power for the service and is essentially unusable. <br>
+
+UPDATE (11/3/25): The PokemonTCG API has recently updated its services to be fully paid for its v3 API. This app currently runs on the v2 API, which has been deprecated and has no further support, so this app effectively no longer works. I do have plans to revisit this at a future date, but that is TBD. 
 
 # Features
 - Real-time webcam detection (YOLOv11-seg)
